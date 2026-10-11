@@ -3,16 +3,135 @@
 @layer base {
   body {
     font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    background-color: #0d0722;
+    color: #f5f3ff;
   }
 
-  h1, h2, h3, .font-display {
-    font-family: 'Outfit', sans-serif;
+  h1, h2, .font-display {
+    font-family: 'Cinzel', 'Playfair Display', 'Outfit', Georgia, serif;
+    letter-spacing: 0.02em;
+  }
+
+  h3 {
+    font-family: 'Playfair Display', 'Outfit', Georgia, serif;
+    letter-spacing: 0.015em;
   }
 
   .font-mono-tabular {
     font-family: 'JetBrains Mono', monospace;
     font-variant-numeric: tabular-nums;
   }
+}
+
+.classic-gold-text {
+  font-family: 'Cinzel', 'Playfair Display', Georgia, serif;
+  background: linear-gradient(135deg, #fffbeb 0%, #fde047 35%, #f59e0b 75%, #fef08a 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 2px 14px rgba(245, 158, 11, 0.25);
+}
+
+.classic-serif-italic {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-style: italic;
+}
+
+/* 5-Minute Mock Test Visual Warning Cue Animations */
+@keyframes urgentPulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.7), 0 0 25px rgba(245, 158, 11, 0.45);
+    border-color: #f43f5e;
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(244, 63, 94, 0), 0 0 40px rgba(244, 63, 94, 0.8);
+    border-color: #fbbf24;
+  }
+}
+
+.mock-warning-pulse {
+  animation: urgentPulseGlow 1.3s infinite ease-in-out;
+}
+
+/* Default App Color Theme: Royal Violet-Sapphire & Sunset Gold (theme-indigo) */
+.theme-indigo .bg-slate-950 {
+  background-color: #0d0722 !important;
+}
+.theme-indigo .bg-slate-950\/95 {
+  background-color: rgba(13, 7, 34, 0.95) !important;
+}
+.theme-indigo .bg-slate-900 {
+  background-color: #19103b !important;
+}
+.theme-indigo .bg-slate-900\/80 {
+  background-color: rgba(25, 16, 59, 0.9) !important;
+}
+.theme-indigo .border-slate-800,
+.theme-indigo .border-slate-800\/80 {
+  border-color: rgba(167, 139, 250, 0.28) !important;
+}
+.theme-indigo .bg-sky-500 {
+  background-color: #f59e0b !important;
+  color: #0d0722 !important;
+}
+.theme-indigo .hover\:bg-sky-400:hover {
+  background-color: #fbbf24 !important;
+}
+.theme-indigo .text-sky-400 {
+  color: #38bdf8 !important;
+}
+
+/* Royal Emerald & Gold App Color Theme Overrides */
+.theme-emerald .bg-slate-950 {
+  background-color: #031c16 !important;
+}
+.theme-emerald .bg-slate-950\/95 {
+  background-color: rgba(3, 28, 22, 0.95) !important;
+}
+.theme-emerald .bg-slate-900 {
+  background-color: #062e24 !important;
+}
+.theme-emerald .bg-slate-900\/80 {
+  background-color: rgba(6, 46, 36, 0.88) !important;
+}
+.theme-emerald .border-slate-800,
+.theme-emerald .border-slate-800\/80 {
+  border-color: rgba(16, 185, 129, 0.25) !important;
+}
+.theme-emerald .bg-sky-500 {
+  background-color: #10b981 !important;
+}
+.theme-emerald .hover\:bg-sky-400:hover {
+  background-color: #34d399 !important;
+}
+.theme-emerald .text-sky-400 {
+  color: #34d399 !important;
+}
+
+/* Crimson Ruby & Gold App Color Theme Overrides */
+.theme-crimson .bg-slate-950 {
+  background-color: #1f060d !important;
+}
+.theme-crimson .bg-slate-950\/95 {
+  background-color: rgba(31, 6, 13, 0.95) !important;
+}
+.theme-crimson .bg-slate-900 {
+  background-color: #330b17 !important;
+}
+.theme-crimson .bg-slate-900\/80 {
+  background-color: rgba(51, 11, 23, 0.88) !important;
+}
+.theme-crimson .border-slate-800,
+.theme-crimson .border-slate-800\/80 {
+  border-color: rgba(244, 63, 94, 0.3) !important;
+}
+.theme-crimson .bg-sky-500 {
+  background-color: #f59e0b !important;
+}
+.theme-crimson .hover\:bg-sky-400:hover {
+  background-color: #fbbf24 !important;
+}
+.theme-crimson .text-sky-400 {
+  color: #fbbf24 !important;
 }
 
 .tabular-nums {

@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="royalBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e1b4b" />
+      <stop offset="50%" stop-color="#311042" />
+      <stop offset="100%" stop-color="#0f0728" />
+    </linearGradient>
+    <linearGradient id="goldWing" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fef08a" />
+      <stop offset="50%" stop-color="#f59e0b" />
+      <stop offset="100%" stop-color="#b45309" />
+    </linearGradient>
+    <linearGradient id="cyanGlow" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#22d3ee" />
+      <stop offset="100%" stop-color="#38bdf8" />
+    </linearGradient>
+  </defs>
+
+  <!-- Outer Rounded Royal Crest Background -->
+  <rect width="512" height="512" rx="116" fill="url(#royalBg)" />
+  <rect x="18" y="18" width="476" height="476" rx="100" fill="none" stroke="url(#goldWing)" stroke-width="8" stroke-opacity="0.7" />
+
+  <!-- Soaring Golden Wings (UDAN = Flight) -->
+  <path
+    d="M64 250 C115 210, 175 235, 225 285 C175 280, 120 300, 82 340 C130 335, 185 345, 232 375 C170 390, 105 365, 64 250 Z"
+    fill="url(#goldWing)"
+  />
+  <path
+    d="M448 250 C397 210, 337 235, 287 285 C337 280, 392 300, 430 340 C382 335, 327 345, 280 375 C342 390, 407 365, 448 250 Z"
+    fill="url(#goldWing)"
+  />
+
+  <!-- Center Shield & Open Book of Knowledge -->
+  <path
+    d="M180 285 Q218 265 256 290 Q294 265 332 285 L332 365 Q294 345 256 370 Q218 345 180 365 Z"
+    fill="url(#cyanGlow)"
+    stroke="#ffffff"
+    stroke-width="6"
+  />
+  <line x1="256" y1="290" x2="256" y2="370" stroke="#0f0728" stroke-width="6" />
+
+  <!-- Graduation Cap Above Shield -->
+  <polygon points="256,118 386,176 256,234 126,176" fill="url(#goldWing)" stroke="#fef08a" stroke-width="4" />
+  <path d="M182 204 L182 246 C182 268, 330 268, 330 246 L330 204" fill="#38bdf8" opacity="0.9" />
+  <path d="M366 184 L366 252" stroke="#fef08a" stroke-width="8" stroke-linecap="round" />
+  <circle cx="366" cy="256" r="10" fill="#f59e0b" />
+
+  <!-- Topper Star at Peak -->
+  <polygon
+    points="256,42 269,72 302,75 277,96 285,128 256,111 227,128 235,96 210,75 243,72"
+    fill="#fef08a"
+  />
+
+  <!-- Bold UDAN Wordmark Ribbon -->
+  <rect x="106" y="392" width="300" height="72" rx="20" fill="#0f0728" stroke="url(#goldWing)" stroke-width="5" />
+  <text
+    x="256"
+    y="443"
+    text-anchor="middle"
+    fill="#ffffff"
+    font-family="Outfit, Arial, sans-serif"
+    font-weight="900"
+    font-size="52"
+    letter-spacing="6"
+  >
+    UDAN
+  </text>
+</svg>

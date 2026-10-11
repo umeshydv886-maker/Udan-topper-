@@ -101,7 +101,7 @@ export const SUBJECT_CATALOG: SubjectInfo[] = [
   {
     id: 'Entrance Special',
     name: 'Entrance Special',
-    subtitle: '+2 KMC College, St. Xavier, SOS, Top Colleges & KTM Mahanagar Scholarship Entrance',
+    subtitle: 'Your Destination — Top +2 Colleges & KTM Mahanagar Scholarship Entrance',
     chapters: [
       'Chapter 1: Dimensional Analysis & Rapid Physics Shortcuts',
       'Chapter 2: Mole Concept, Equivalent Weight & Stoichiometry',
@@ -647,7 +647,7 @@ export const INITIAL_QUESTIONS: MCQQuestion[] = [
 
 export const DAILY_QUOTES = [
   {
-    quote: 'तपाईंको सपना, हाम्रो लक्ष्य — Every single MCQ you solve today brings you one step closer to wearing the St. Xavier’s or SOS badge tomorrow.',
+    quote: 'तपाईंको सपना, हाम्रो लक्ष्य — Every single MCQ you solve today brings you one step closer to your destination tomorrow.',
     author: 'Niraj Yadav',
   },
   {
