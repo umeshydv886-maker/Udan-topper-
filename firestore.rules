@@ -1,0 +1,253 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        (request.auth.token.email == "umeshydv886@gmail.com" && request.auth.token.email_verified == true) ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    match /admins/{adminId} {
+      allow get: if isSignedIn() && isValidId(adminId) && (request.auth.uid == adminId || isAdmin());
+      allow list: if false;
+      allow create, update, delete: if isAdmin() && isValidId(adminId);
+    }
+
+    // 1. System Config (/system/{configId})
+    function isValidBatchConfig(data) {
+      return data.keys().hasAll(['batchLimit', 'isOpen', 'registeredCount']) &&
+             data.keys().hasOnly(['batchLimit', 'isOpen', 'registeredCount', 'mockTestForceLive', 'mockTestPublished', 'updatedAt']) &&
+             data.batchLimit is number && data.batchLimit >= 1 && data.batchLimit <= 10000 &&
+             data.isOpen is bool &&
+             data.registeredCount is number && data.registeredCount >= 0 && data.registeredCount <= 10000;
+    }
+
+    match /system/{configId} {
+      allow get: if isValidId(configId);
+      allow list: if false;
+      allow create: if isSignedIn() && isValidId(configId) && isValidBatchConfig(incoming());
+      allow update: if isSignedIn() && isValidId(configId) && isValidBatchConfig(incoming()) && (
+        isAdmin() ||
+        (incoming().diff(existing()).affectedKeys().hasOnly(['registeredCount', 'updatedAt']) &&
+         incoming().registeredCount == existing().registeredCount + 1 &&
+         existing().isOpen == true &&
+         existing().registeredCount < existing().batchLimit)
+      );
+      allow delete: if isAdmin() && isValidId(configId);
+    }
+
+    // 2. Public Student Profiles (/students/{studentId})
+    function isValidStudentProfile(data) {
+      return data.keys().hasAll(['uid', 'name', 'role', 'agPoints', 'totalAttempts', 'correctCount', 'timeSpentMinutes']) &&
+             data.keys().hasOnly([
+               'uid', 'name', 'role', 'agPoints', 'accuracy', 'totalAttempts', 'correctCount',
+               'timeSpentMinutes', 'lastLoginDate', 'dailyGoalTarget', 'dailyGoalCompleted', 'dailyGoalDate',
+               'subjectScores', 'chapterScores', 'disqualifiedMock', 'mockWarnings', 'createdAt', 'updatedAt'
+             ]) &&
+             data.uid is string && data.uid.size() >= 1 && data.uid.size() <= 128 &&
+             data.name is string && data.name.size() >= 1 && data.name.size() <= 80 &&
+             data.role in ['student', 'admin'] &&
+             data.agPoints is number && data.agPoints >= 0 &&
+             data.totalAttempts is number && data.totalAttempts >= 0 &&
+             data.correctCount is number && data.correctCount >= 0 &&
+             data.timeSpentMinutes is number && data.timeSpentMinutes >= 0;
+    }
+
+    match /students/{studentId} {
+      allow get: if isValidId(studentId);
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(studentId) && isValidStudentProfile(incoming()) && (
+        isAdmin() ||
+        (incoming().uid == request.auth.uid && studentId == request.auth.uid && incoming().role == 'student')
+      );
+      allow update: if isSignedIn() && isValidId(studentId) && isValidStudentProfile(incoming()) && (
+        isAdmin() ||
+        (existing().uid == request.auth.uid && incoming().uid == existing().uid && incoming().role == existing().role &&
+         incoming().diff(existing()).affectedKeys().hasOnly([
+           'name', 'agPoints', 'accuracy', 'totalAttempts', 'correctCount', 'timeSpentMinutes',
+           'lastLoginDate', 'dailyGoalTarget', 'dailyGoalCompleted', 'dailyGoalDate',
+           'subjectScores', 'chapterScores', 'disqualifiedMock', 'mockWarnings', 'updatedAt'
+         ]))
+      );
+      allow delete: if isAdmin() && isValidId(studentId);
+    }
+
+    // 2B. Sunday 8 PM Quiz Competition Participants (/sunday_quiz_participants/{participantId})
+    function isValidSundayQuizParticipant(data) {
+      return data.keys().hasAll(['uid', 'studentName', 'rightAnswers', 'agPointsEarned']) &&
+             data.keys().hasOnly(['uid', 'studentName', 'photoUrl', 'rightAnswers', 'currentQuestionAnswered', 'agPointsEarned', 'joinedAt', 'updatedAt']) &&
+             data.uid is string && data.uid.size() >= 1 && data.uid.size() <= 128 &&
+             data.studentName is string && data.studentName.size() >= 1 && data.studentName.size() <= 80 &&
+             data.rightAnswers is number && data.rightAnswers >= 0 && data.rightAnswers <= 40 &&
+             data.agPointsEarned is number && data.agPointsEarned >= 0 &&
+             (!('photoUrl' in data) || (data.photoUrl is string && data.photoUrl.size() <= 400000));
+    }
+
+    match /sunday_quiz_participants/{participantId} {
+      allow get: if isValidId(participantId);
+      allow list: if isSignedIn();
+      allow create, update: if isSignedIn() && isValidId(participantId) && isValidSundayQuizParticipant(incoming());
+      allow delete: if isSignedIn() && isValidId(participantId);
+    }
+
+    // 3. Private User Info & Saved Resume States (/user_private/{userId}) - Strictly PII Isolated
+    function isValidUserPrivate(data) {
+      return data.keys().hasAll(['uid', 'emailOrPhone']) &&
+             data.keys().hasOnly(['uid', 'emailOrPhone', 'mistakeQuestionIds', 'savedPracticeJson', 'savedMockJson', 'updatedAt']) &&
+             data.uid is string && data.uid.size() >= 1 && data.uid.size() <= 128 &&
+             data.emailOrPhone is string && data.emailOrPhone.size() >= 1 && data.emailOrPhone.size() <= 120 &&
+             (!('mistakeQuestionIds' in data) || (data.mistakeQuestionIds is list && data.mistakeQuestionIds.size() <= 500)) &&
+             (!('savedPracticeJson' in data) || (data.savedPracticeJson is string && data.savedPracticeJson.size() <= 10000)) &&
+             (!('savedMockJson' in data) || (data.savedMockJson is string && data.savedMockJson.size() <= 10000));
+    }
+
+    match /user_private/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && (request.auth.uid == userId || isAdmin());
+      allow list: if isSignedIn() && (resource.data.uid == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && isValidId(userId) && isValidUserPrivate(incoming()) && (request.auth.uid == userId || isAdmin());
+      allow update: if isSignedIn() && isValidId(userId) && isValidUserPrivate(incoming()) && (
+        isAdmin() ||
+        (request.auth.uid == userId && incoming().uid == existing().uid &&
+         incoming().diff(existing()).affectedKeys().hasOnly(['emailOrPhone', 'mistakeQuestionIds', 'savedPracticeJson', 'savedMockJson', 'updatedAt']))
+      );
+      allow delete: if isAdmin() && isValidId(userId);
+    }
+
+    // 4. Custom Questions (/questions/{questionId})
+    function isValidQuestion(data) {
+      return data.keys().hasAll(['subject', 'chapter', 'question', 'options', 'correctIndex', 'explanation', 'createdBy']) &&
+             data.keys().hasOnly(['subject', 'chapter', 'question', 'options', 'correctIndex', 'explanation', 'createdBy', 'createdAt']) &&
+             data.subject is string && data.subject.size() >= 1 && data.subject.size() <= 60 &&
+             data.chapter is string && data.chapter.size() >= 1 && data.chapter.size() <= 100 &&
+             data.question is string && data.question.size() >= 1 && data.question.size() <= 1000 &&
+             data.options is list && data.options.size() == 4 && data.options[0] is string && data.options[0].size() <= 300 &&
+             data.correctIndex is number && data.correctIndex >= 0 && data.correctIndex <= 3 &&
+             data.explanation is string && data.explanation.size() >= 1 && data.explanation.size() <= 1500 &&
+             data.createdBy is string && data.createdBy.size() <= 128;
+    }
+
+    match /questions/{questionId} {
+      allow get: if isValidId(questionId);
+      allow list: if isSignedIn();
+      allow create, update: if isSignedIn() && isValidId(questionId) && isValidQuestion(incoming());
+      allow delete: if isSignedIn() && isValidId(questionId);
+    }
+
+    // 5. Flash Board (/flashboard/{itemId})
+    function isValidFlashItem(data) {
+      return data.keys().hasAll(['type', 'title', 'content', 'authorName']) &&
+             data.keys().hasOnly(['type', 'title', 'content', 'imageUrl', 'authorName', 'createdAt']) &&
+             data.type in ['Notice', 'GK Nepali', 'Motivational', 'Image Post'] &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 150 &&
+             data.content is string && data.content.size() >= 1 && data.content.size() <= 2000 &&
+             data.authorName is string && data.authorName.size() >= 1 && data.authorName.size() <= 80 &&
+             (!('imageUrl' in data) || (data.imageUrl is string && data.imageUrl.size() <= 500));
+    }
+
+    match /flashboard/{itemId} {
+      allow get: if isValidId(itemId);
+      allow list: if isSignedIn();
+      allow create, update: if isSignedIn() && isValidId(itemId) && isValidFlashItem(incoming());
+      allow delete: if isSignedIn() && isValidId(itemId);
+    }
+
+    // 6. Chat Room (/chat/{messageId})
+    function isValidChatMessage(data) {
+      return data.keys().hasAll(['senderId', 'senderName', 'senderRole', 'text']) &&
+             data.keys().hasOnly(['senderId', 'senderName', 'senderRole', 'text', 'agPoints', 'createdAt']) &&
+             data.senderId is string && data.senderId.size() >= 1 && data.senderId.size() <= 128 &&
+             data.senderName is string && data.senderName.size() >= 1 && data.senderName.size() <= 80 &&
+             data.senderRole in ['student', 'admin'] &&
+             data.text is string && data.text.size() >= 1 && data.text.size() <= 500;
+    }
+
+    match /chat/{messageId} {
+      allow get: if isValidId(messageId);
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(messageId) && isValidChatMessage(incoming());
+      allow update: if false;
+      allow delete: if isSignedIn() && isValidId(messageId);
+    }
+
+    // 7. Photo Question & Doubt Discussion Page (/discussions/{postId})
+    function isValidDiscussionPost(data) {
+      return data.keys().hasAll(['authorId', 'authorName', 'authorRole', 'subject', 'questionText']) &&
+             data.keys().hasOnly(['authorId', 'authorName', 'authorRole', 'subject', 'questionText', 'photoDataUrl', 'repliesJson', 'createdAt']) &&
+             data.authorId is string && data.authorId.size() >= 1 && data.authorId.size() <= 128 &&
+             data.authorName is string && data.authorName.size() >= 1 && data.authorName.size() <= 80 &&
+             data.authorRole in ['student', 'admin'] &&
+             data.subject is string && data.subject.size() >= 1 && data.subject.size() <= 60 &&
+             data.questionText is string && data.questionText.size() >= 1 && data.questionText.size() <= 1000 &&
+             (!('photoDataUrl' in data) || (data.photoDataUrl is string && data.photoDataUrl.size() <= 700000)) &&
+             (!('repliesJson' in data) || (data.repliesJson is string && data.repliesJson.size() <= 20000));
+    }
+
+    match /discussions/{postId} {
+      allow get: if isValidId(postId);
+      allow list: if isSignedIn();
+      allow create, update: if isSignedIn() && isValidId(postId) && isValidDiscussionPost(incoming());
+      allow delete: if isSignedIn() && isValidId(postId);
+    }
+
+    // 8. Feedback / Say something about Niraj (/feedback/{feedbackId})
+    function isValidFeedback(data) {
+      return data.keys().hasAll(['authorId', 'authorName', 'message', 'rating']) &&
+             data.keys().hasOnly(['authorId', 'authorName', 'message', 'rating', 'createdAt']) &&
+             data.authorId is string && data.authorId.size() >= 1 && data.authorId.size() <= 128 &&
+             data.authorName is string && data.authorName.size() >= 1 && data.authorName.size() <= 80 &&
+             data.message is string && data.message.size() >= 1 && data.message.size() <= 800 &&
+             data.rating is number && data.rating >= 1 && data.rating <= 5;
+    }
+
+    match /feedback/{feedbackId} {
+      allow get: if isValidId(feedbackId);
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(feedbackId) && isValidFeedback(incoming());
+      allow update: if false;
+      allow delete: if isSignedIn() && isValidId(feedbackId);
+    }
+
+    // 9. Mock Submissions (/mock_submissions/{submissionId})
+    function isValidMockSubmission(data) {
+      return data.keys().hasAll(['uid', 'studentName', 'score', 'totalQuestions', 'accuracy', 'timeTakenSeconds', 'disqualified']) &&
+             data.keys().hasOnly(['uid', 'studentName', 'score', 'totalQuestions', 'accuracy', 'timeTakenSeconds', 'warnings', 'disqualified', 'submittedAt']) &&
+             data.uid is string && data.uid.size() >= 1 && data.uid.size() <= 128 &&
+             data.studentName is string && data.studentName.size() >= 1 && data.studentName.size() <= 80 &&
+             data.score is number && data.score >= 0 && data.score <= 100 &&
+             data.totalQuestions is number && data.totalQuestions >= 1 && data.totalQuestions <= 100 &&
+             data.accuracy is number && data.accuracy >= 0 && data.accuracy <= 100 &&
+             data.timeTakenSeconds is number && data.timeTakenSeconds >= 0 &&
+             data.disqualified is bool;
+    }
+
+    match /mock_submissions/{submissionId} {
+      allow get: if isValidId(submissionId);
+      allow list: if isSignedIn();
+      allow create, update: if isSignedIn() && isValidId(submissionId) && isValidMockSubmission(incoming());
+      allow delete: if isSignedIn() && isValidId(submissionId);
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "UDAN - The Entrance Topper",
+  "description": "Class 10 CDC Syllabus Nepal Entrance Preparation Platform — तपाईंको सपना, हाम्रो लक्ष्य. Created by Niraj Yadav.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

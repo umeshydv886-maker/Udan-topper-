@@ -1,0 +1,206 @@
+{
+  "entities": {
+    "BatchConfig": {
+      "title": "BatchConfig",
+      "description": "Global admission batch limit and system status controlled by Niraj Yadav.",
+      "type": "object",
+      "properties": {
+        "batchLimit": { "type": "number", "description": "Maximum allowed students (default 100)" },
+        "isOpen": { "type": "boolean", "description": "Manual admission switch (true = OPEN, false = CLOSED)" },
+        "registeredCount": { "type": "number", "description": "Current number of registered students" },
+        "mockTestForceLive": { "type": "boolean", "description": "Admin toggle to force Mock Test live anytime" },
+        "mockTestPublished": { "type": "boolean", "description": "Whether mock test results are published" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["batchLimit", "isOpen", "registeredCount"]
+    },
+    "StudentProfile": {
+      "title": "StudentProfile",
+      "description": "Public student profile for leaderboard, AG Points, daily goal tracker, and progress stats.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 80 },
+        "role": { "type": "string", "enum": ["student", "admin"] },
+        "agPoints": { "type": "number" },
+        "accuracy": { "type": "number" },
+        "totalAttempts": { "type": "number" },
+        "correctCount": { "type": "number" },
+        "timeSpentMinutes": { "type": "number" },
+        "lastLoginDate": { "type": "string", "maxLength": 20 },
+        "dailyGoalTarget": { "type": "number" },
+        "dailyGoalCompleted": { "type": "number" },
+        "dailyGoalDate": { "type": "string", "maxLength": 20 },
+        "subjectScores": { "type": "object" },
+        "chapterScores": { "type": "object" },
+        "disqualifiedMock": { "type": "boolean" },
+        "mockWarnings": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "name", "role", "agPoints", "totalAttempts", "correctCount", "timeSpentMinutes"]
+    },
+    "SundayQuizParticipant": {
+      "title": "SundayQuizParticipant",
+      "description": "Student joined in the Sunday 8:00 PM Quiz Competition with photo, right answers, and AG points.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "studentName": { "type": "string", "maxLength": 80 },
+        "photoUrl": { "type": "string", "maxLength": 400000 },
+        "rightAnswers": { "type": "number" },
+        "currentQuestionAnswered": { "type": "number" },
+        "agPointsEarned": { "type": "number" },
+        "joinedAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "studentName", "rightAnswers", "agPointsEarned"]
+    },
+    "UserPrivate": {
+      "title": "UserPrivate",
+      "description": "Private PII and active test resume state for a student.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "emailOrPhone": { "type": "string", "maxLength": 120 },
+        "mistakeQuestionIds": { "type": "array" },
+        "savedPracticeJson": { "type": "string", "maxLength": 10000 },
+        "savedMockJson": { "type": "string", "maxLength": 10000 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "emailOrPhone"]
+    },
+    "CustomQuestion": {
+      "title": "CustomQuestion",
+      "description": "MCQ Question added or edited by Admin Niraj Yadav.",
+      "type": "object",
+      "properties": {
+        "subject": { "type": "string", "maxLength": 60 },
+        "chapter": { "type": "string", "maxLength": 100 },
+        "question": { "type": "string", "maxLength": 1000 },
+        "options": { "type": "array" },
+        "correctIndex": { "type": "number" },
+        "explanation": { "type": "string", "maxLength": 1500 },
+        "createdBy": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["subject", "chapter", "question", "options", "correctIndex", "explanation", "createdBy"]
+    },
+    "FlashItem": {
+      "title": "FlashItem",
+      "description": "Notice, GK in Nepali, Text, or Image posted on the Flash Board by Admin.",
+      "type": "object",
+      "properties": {
+        "type": { "type": "string", "enum": ["Notice", "GK Nepali", "Motivational", "Image Post"] },
+        "title": { "type": "string", "maxLength": 150 },
+        "content": { "type": "string", "maxLength": 2000 },
+        "imageUrl": { "type": "string", "maxLength": 500 },
+        "authorName": { "type": "string", "maxLength": 80 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["type", "title", "content", "authorName"]
+    },
+    "ChatMessage": {
+      "title": "ChatMessage",
+      "description": "Student and Admin chat messages in the live discussion room.",
+      "type": "object",
+      "properties": {
+        "senderId": { "type": "string", "maxLength": 128 },
+        "senderName": { "type": "string", "maxLength": 80 },
+        "senderRole": { "type": "string", "enum": ["student", "admin"] },
+        "text": { "type": "string", "maxLength": 500 },
+        "agPoints": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["senderId", "senderName", "senderRole", "text"]
+    },
+    "DiscussionPost": {
+      "title": "DiscussionPost",
+      "description": "Student photo question and doubt discussion post.",
+      "type": "object",
+      "properties": {
+        "authorId": { "type": "string", "maxLength": 128 },
+        "authorName": { "type": "string", "maxLength": 80 },
+        "authorRole": { "type": "string", "enum": ["student", "admin"] },
+        "subject": { "type": "string", "maxLength": 60 },
+        "questionText": { "type": "string", "maxLength": 1000 },
+        "photoDataUrl": { "type": "string", "maxLength": 700000 },
+        "repliesJson": { "type": "string", "maxLength": 20000 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["authorId", "authorName", "authorRole", "subject", "questionText"]
+    },
+    "FeedbackPost": {
+      "title": "FeedbackPost",
+      "description": "Student tribute and feedback ('Say something about Niraj').",
+      "type": "object",
+      "properties": {
+        "authorId": { "type": "string", "maxLength": 128 },
+        "authorName": { "type": "string", "maxLength": 80 },
+        "message": { "type": "string", "maxLength": 800 },
+        "rating": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["authorId", "authorName", "message", "rating"]
+    },
+    "MockSubmission": {
+      "title": "MockSubmission",
+      "description": "Saturday Mock Test submission and score.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "studentName": { "type": "string", "maxLength": 80 },
+        "score": { "type": "number" },
+        "totalQuestions": { "type": "number" },
+        "accuracy": { "type": "number" },
+        "timeTakenSeconds": { "type": "number" },
+        "warnings": { "type": "number" },
+        "disqualified": { "type": "boolean" },
+        "submittedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "studentName", "score", "totalQuestions", "accuracy", "timeTakenSeconds", "disqualified"]
+    }
+  },
+  "firestore": {
+    "/system/{configId}": {
+      "schema": { "$ref": "#/entities/BatchConfig" },
+      "description": "Global admission batch config and mock test status"
+    },
+    "/students/{studentId}": {
+      "schema": { "$ref": "#/entities/StudentProfile" },
+      "description": "Public student profile for leaderboard, AG Points, daily goal tracker, and progress stats"
+    },
+    "/sunday_quiz_participants/{participantId}": {
+      "schema": { "$ref": "#/entities/SundayQuizParticipant" },
+      "description": "Sunday 8 PM Quiz Competition live rankings, right answer counts, and Top 5 Flash Board showcase with photos"
+    },
+    "/user_private/{userId}": {
+      "schema": { "$ref": "#/entities/UserPrivate" },
+      "description": "Private PII (email/phone) and saved practice/mock test resume payloads"
+    },
+    "/questions/{questionId}": {
+      "schema": { "$ref": "#/entities/CustomQuestion" },
+      "description": "Custom MCQ questions managed by Admin"
+    },
+    "/flashboard/{itemId}": {
+      "schema": { "$ref": "#/entities/FlashItem" },
+      "description": "Flash board posts controlled only by Admin"
+    },
+    "/chat/{messageId}": {
+      "schema": { "$ref": "#/entities/ChatMessage" },
+      "description": "Student and Admin chat messages"
+    },
+    "/discussions/{postId}": {
+      "schema": { "$ref": "#/entities/DiscussionPost" },
+      "description": "Student photo questions and doubt discussion posts"
+    },
+    "/feedback/{feedbackId}": {
+      "schema": { "$ref": "#/entities/FeedbackPost" },
+      "description": "Feedback messages about Niraj Yadav"
+    },
+    "/mock_submissions/{submissionId}": {
+      "schema": { "$ref": "#/entities/MockSubmission" },
+      "description": "Saturday 8-9 AM Mock Test results"
+    }
+  }
+}
