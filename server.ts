@@ -36,7 +36,7 @@ async function startServer() {
       const prompt =
         subject === 'GK'
           ? `Generate ${count} high-yield entrance exam Multiple Choice Questions (MCQs) in NEPALI LANGUAGE (देवनागरी लिपि) for Class 10 Nepal Entrance Preparation under subject "GK" and chapter "${chapter}". Include 4 realistic options, the exact 0-based correctIndex (0 to 3), and a clear explanation in Nepali.`
-          : `Generate ${count} high-yield Class 10 CDC Syllabus Nepal Entrance Preparation Multiple Choice Questions (MCQs) for St. Xavier's / SOS / Budhanilkantha / CTEVT entrance exams.
+          : `Generate ${count} high-yield Class 10 CDC Syllabus Nepal Entrance Preparation Multiple Choice Questions (MCQs) for Your Destination (+2 Science, Management & CTEVT entrance exams).
 Subject: "${subject}"
 Chapter: "${chapter}"
 Provide 4 distinct options, the 0-based correctIndex (0, 1, 2, or 3), and a clear step-by-step explanation.`;
