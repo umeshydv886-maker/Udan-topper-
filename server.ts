@@ -84,7 +84,7 @@ Provide 4 distinct options, the 0-based correctIndex (0, 1, 2, or 3), and a clea
       const { category = 'GK Nepali', topic = 'Important Nepal Entrance Facts' } = req.body;
       const ai = getAiClient();
 
-      const prompt = `Create an official Flash Board post for "UDAN - The Entrance Topper" (Class 10 CDC Syllabus Nepal, Created by Niraj Yadav).
+      const prompt = `Create an official Flash Board post for "Steppin - You Destination" (www.steppin.com, Class 10 CDC Syllabus Nepal Entrance Platform, Created by Niraj Yadav).
 Category: "${category}"
 Topic: "${topic}"
 If Category is "GK Nepali", write the title and content in Nepali language (देवनागरी) with 5 high-value GK bullet points for entrance students.
@@ -117,9 +117,41 @@ Otherwise, write an inspiring, clear, and authoritative post signed by Niraj Yad
     }
   });
 
+  // AI Doubt Solver & Voice Tutor Assistant (English / Nepali)
+  app.post('/api/ai-doubt-tutor', async (req, res) => {
+    try {
+      const { questionText, subject = 'Science', language = 'en' } = req.body;
+      const ai = getAiClient();
+
+      const prompt = `You are the Lead Academic Tutor at Steppin (www.steppin.com) — Class 10 CDC Syllabus Nepal Entrance Platform.
+A student asked the following doubt in ${subject}:
+"${questionText}"
+
+Provide a clear, encouraging, step-by-step solution and memory trick.
+If language is "ne", provide the entire explanation in Nepali (देवनागरी लिपि).
+Otherwise, provide in concise English with key formulas emphasized.`;
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.8-flash',
+        contents: prompt,
+      });
+
+      res.json({ solution: response.text || 'Solution generated successfully.' });
+    } catch (error: any) {
+      console.error('AI Doubt tutor error:', error);
+      res.status(500).json({
+        error: error instanceof Error ? error.message : 'Failed to generate solution',
+      });
+    }
+  });
+
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: {
+        middlewareMode: true,
+        hmr: false,
+        watch: null,
+      },
       appType: 'spa',
     });
     app.use(vite.middlewares);
@@ -132,7 +164,7 @@ Otherwise, write an inspiring, clear, and authoritative post signed by Niraj Yad
   }
 
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`UDAN Server running on http://0.0.0.0:${PORT}`);
+    console.log(`Steppin Server running on http://0.0.0.0:${PORT}`);
   });
 }
 

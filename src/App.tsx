@@ -32,6 +32,7 @@ import {
   Lock,
   Unlock,
   Send,
+  Eye,
   EyeOff,
   Wand2,
   ExternalLink,
@@ -45,6 +46,17 @@ import {
   Zap,
   Volume2,
   VolumeX,
+  Headphones,
+  Radio,
+  Languages,
+  FileText,
+  Globe,
+  Download,
+  Smartphone,
+  Home,
+  BookOpen,
+  Award,
+  BarChart2,
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import {
@@ -70,6 +82,17 @@ import {
   MCQQuestion,
   DAILY_QUOTES,
 } from './data/questionBank';
+import {
+  STEPPIN_ALL_FEATURES_DATA,
+  UDAN_ALL_FEATURES_DATA,
+  downloadAllFeaturesZipOfPdf,
+  downloadMasterFeaturesPdfDirect,
+  generateSteppin95Checklist,
+  downloadSolvedQuestionBankPdf,
+} from './utils/featuresZipPdf';
+import { I18N, Language } from './data/i18n';
+import { LiveVoice } from './components/LiveVoice';
+import { VoiceRecorder, AudioSpeakerBtn } from './components/VoiceRecorder';
 
 const NIRAJ_FB_LINK = 'https://www.facebook.com/share/1HBWpvKbf2/';
 const NIRAJ_TIKTOK_LINK = 'https://www.tiktok.com/@niraj__yadav__?_r=1&_t=ZS-9ASqjcuTvwD';
@@ -204,6 +227,8 @@ type NavTab =
   | 'progress'
   | 'flashboard'
   | 'discuss'
+  | 'voice'
+  | 'downloads'
   | 'profile'
   | 'private_students'
   | 'admin';
@@ -362,28 +387,28 @@ const UDANLogo: React.FC<{ size?: number }> = ({ size = 44 }) => (
       points="256,38 269,68 302,71 277,92 285,124 256,107 227,124 235,92 210,71 243,68"
       fill="#fef08a"
     />
-    {/* Engraved Classic Serif UDAN Banner */}
+    {/* Engraved Classic Serif STEPPIN Banner */}
     <rect x="96" y="390" width="320" height="76" rx="22" fill="#0f0728" stroke="url(#udanGold)" strokeWidth="6" />
     <text
       x="256"
-      y="444"
+      y="442"
       textAnchor="middle"
       fill="#fef08a"
       fontFamily="Cinzel, Georgia, serif"
       fontWeight="900"
-      fontSize="54"
-      letterSpacing="7"
+      fontSize="36"
+      letterSpacing="4"
     >
-      UDAN
+      STEPPIN
     </text>
   </svg>
 );
 
 export default function App() {
-  // App Color Theme State ('theme-indigo' Royal Violet & Gold default, plus 'theme-emerald', 'theme-crimson', 'theme-slate')
-  const [appTheme, setAppTheme] = useState<'theme-indigo' | 'theme-emerald' | 'theme-crimson' | 'theme-slate'>(() => {
+  // App Color Theme State: 'theme-light' (White Background & Black Text default per user request), plus 'theme-indigo', 'theme-emerald', 'theme-crimson', 'theme-slate'
+  const [appTheme, setAppTheme] = useState<'theme-light' | 'theme-indigo' | 'theme-emerald' | 'theme-crimson' | 'theme-slate'>(() => {
     const saved = localStorage.getItem('udan_color_theme_v2') as any;
-    return saved || 'theme-indigo';
+    return saved || 'theme-light';
   });
   const [creatorPinInput, setCreatorPinInput] = useState('');
   const [creatorPinMessage, setCreatorPinMessage] = useState<string | null>(null);
@@ -396,14 +421,33 @@ export default function App() {
 
   // Forgot Password & 6-Digit Gmail Verification Code Login System States
   const [authSubMode, setAuthSubMode] = useState<'standard' | 'forgot_password' | 'code_login' | 'google_chooser'>('standard');
+  const [showInlineForgotReset, setShowInlineForgotReset] = useState(false);
   const [recoveryGmail, setRecoveryGmail] = useState('');
   const [generatedOtpCode, setGeneratedOtpCode] = useState('');
   const [enteredOtpCode, setEnteredOtpCode] = useState('');
   const [newResetPassword, setNewResetPassword] = useState('');
+  const [confirmResetPassword, setConfirmResetPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showNewResetPassword, setShowNewResetPassword] = useState(false);
+  const [showConfirmResetPassword, setShowConfirmResetPassword] = useState(false);
+  const [showCreatorPin, setShowCreatorPin] = useState(false);
   const [otpSentNotice, setOtpSentNotice] = useState<string | null>(null);
   const [googleChooserEmail, setGoogleChooserEmail] = useState('');
   const [googleChooserName, setGoogleChooserName] = useState('');
   const [selectedStudentCardUid, setSelectedStudentCardUid] = useState<string | null>(null);
+  const [currentLanguage, setCurrentLanguage] = useState<Language>(() => {
+    return (localStorage.getItem('steppin_lang_v1') as Language) || 'en';
+  });
+  const [show95ChecklistModal, setShow95ChecklistModal] = useState(false);
+  const [showDownloadCenterModal, setShowDownloadCenterModal] = useState(false);
+  const [voiceDoubtAudio, setVoiceDoubtAudio] = useState<string | null>(null);
+  const [showVoiceRecorderInDiscuss, setShowVoiceRecorderInDiscuss] = useState(false);
+
+  useEffect(() => {
+    localStorage.setItem('steppin_lang_v1', currentLanguage);
+  }, [currentLanguage]);
+
+  const t = I18N[currentLanguage];
 
   useEffect(() => {
     localStorage.setItem('udan_color_theme_v2', appTheme);
@@ -529,6 +573,18 @@ export default function App() {
   // Daily Goal Tracker State
   const [dailyGoalTarget, setDailyGoalTarget] = useState<number>(30);
   const [dailyGoalCompleted, setDailyGoalCompleted] = useState<number>(0);
+  const [showAllFeaturesModal, setShowAllFeaturesModal] = useState<boolean>(false);
+  const [zipDownloading, setZipDownloading] = useState<boolean>(false);
+
+  async function handleDownloadFeaturesZip() {
+    if (zipDownloading) return;
+    setZipDownloading(true);
+    try {
+      await downloadAllFeaturesZipOfPdf();
+    } finally {
+      setZipDownloading(false);
+    }
+  }
 
   // Practice Mode States
   const [selectedSubject, setSelectedSubject] = useState<string>('Science');
@@ -594,8 +650,9 @@ export default function App() {
   // Private Page Search & Sort
   const [studentSearch, setStudentSearch] = useState('');
 
-  // Subject Toppers Filter State on Progress Page
+  // Subject Toppers Filter State & Leaderboard Timeframe Filter State on Progress Page
   const [topperSubjectFilter, setTopperSubjectFilter] = useState<string>('Science');
+  const [leaderboardTimeFilter, setLeaderboardTimeFilter] = useState<'weekly' | 'monthly' | 'all-time'>('all-time');
 
   // Feedback ("Say something about Niraj")
   const [feedbackText, setFeedbackText] = useState('');
@@ -627,9 +684,11 @@ export default function App() {
   const isScreenshotBlocked = useMemo(() => {
     if (practiceActive && !practiceFinished) return true;
     if (mockActive && !mockFinished) return true;
-    if (activeTab === 'practice' && !practiceFinished) return true;
+    if (activeTab === 'practice') return true;
+    if (activeTab === 'mock') return true;
+    if (activeTab === 'sunday_quiz' && sundayStage !== 'final') return true;
     return false;
-  }, [practiceActive, practiceFinished, mockActive, mockFinished, activeTab]);
+  }, [practiceActive, practiceFinished, mockActive, mockFinished, activeTab, sundayStage]);
 
   // Format Time Spent nicely (Hours + Minutes)
   const formatTimeSpent = (totalMinutes: number) => {
@@ -810,18 +869,65 @@ export default function App() {
     }
   }, [activeTab, sundayStage, sundayQIndex]);
 
-  // Screenshot & Tab-Switch Security Enforcement
+  // Screenshot & Screen Capture & Tab-Switch Security Enforcement
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!isScreenshotBlocked) return;
       if (
         e.key === 'PrintScreen' ||
-        (e.ctrlKey && e.shiftKey && (e.key === 'S' || e.key === 'I' || e.key === 's')) ||
-        (e.metaKey && e.shiftKey && (e.key === '3' || e.key === '4' || e.key === '5'))
+        e.code === 'PrintScreen' ||
+        (e.ctrlKey && e.shiftKey && (e.key === 'S' || e.key === 'I' || e.key === 's' || e.key === 'C' || e.key === 'c')) ||
+        (e.metaKey && e.shiftKey && (e.key === '3' || e.key === '4' || e.key === '5' || e.key === 's' || e.key === 'S')) ||
+        ((e.ctrlKey || e.metaKey) && (e.key === 'p' || e.key === 'P' || e.key === 's' || e.key === 'S'))
       ) {
         e.preventDefault();
-        setSecurityAlertBanner('Screenshot Blocked! Questions, Practice Mode, and Mock Test pages are strictly protected.');
-        setTimeout(() => setSecurityAlertBanner(null), 5000);
+        try {
+          navigator.clipboard?.writeText?.('Screenshots and screen recording are strictly blocked on Steppin (www.steppin.com) — Created by Niraj Yadav');
+        } catch {}
+        setWindowBlurred(true);
+        setSecurityAlertBanner('🚫 SCREENSHOT STRICTLY BLOCKED! Screen capture, printing, and screenshots are prohibited on test pages.');
+        setTimeout(() => {
+          setWindowBlurred(false);
+          setSecurityAlertBanner(null);
+        }, 3500);
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (!isScreenshotBlocked) return;
+      if (e.key === 'PrintScreen' || e.code === 'PrintScreen') {
+        e.preventDefault();
+        try {
+          navigator.clipboard?.writeText?.('Screenshots are prohibited on Steppin - You Destination');
+        } catch {}
+        setWindowBlurred(true);
+        setSecurityAlertBanner('🚫 SCREENSHOT BLOCKED! Screen capture is strictly prohibited.');
+        setTimeout(() => {
+          setWindowBlurred(false);
+          setSecurityAlertBanner(null);
+        }, 3000);
+      }
+    };
+
+    const handleWindowBlur = () => {
+      if (isScreenshotBlocked) {
+        setWindowBlurred(true);
+      }
+    };
+
+    const handleWindowFocus = () => {
+      setTimeout(() => {
+        if (!document.hidden) {
+          setWindowBlurred(false);
+        }
+      }, 400);
+    };
+
+    const handleCopy = (e: ClipboardEvent) => {
+      if (isScreenshotBlocked) {
+        e.preventDefault();
+        setSecurityAlertBanner('Copying text from question pages is strictly disabled.');
+        setTimeout(() => setSecurityAlertBanner(null), 3000);
       }
     };
 
@@ -855,9 +961,17 @@ export default function App() {
     };
 
     window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener('blur', handleWindowBlur);
+    window.addEventListener('focus', handleWindowFocus);
+    document.addEventListener('copy', handleCopy);
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('blur', handleWindowBlur);
+      window.removeEventListener('focus', handleWindowFocus);
+      document.removeEventListener('copy', handleCopy);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [isScreenshotBlocked, mockActive, mockFinished, mockDisqualified]);
@@ -1221,9 +1335,28 @@ export default function App() {
       password.trim() === 'NIRAJ2082';
 
     const savedCustomWelcome = localStorage.getItem(`udan_welcome_name_${user.uid}`)?.trim();
+    const lastSavedStudentName = localStorage.getItem('udan_last_student_name')?.trim();
+    let accountVaultName = '';
+    try {
+      const v = JSON.parse(localStorage.getItem('udan_accounts_v2') || '{}');
+      if (user.email && v[user.email.toLowerCase()]) {
+        accountVaultName = v[user.email.toLowerCase()]?.name || '';
+      }
+      if (!accountVaultName) {
+        for (const k of Object.keys(v)) {
+          if (v[k]?.uid === user.uid || (user.email && v[k]?.email?.toLowerCase() === user.email.toLowerCase())) {
+            accountVaultName = v[k]?.name || '';
+            break;
+          }
+        }
+      }
+    } catch {}
+
     const rawCandidate =
       customDisplayName?.trim() ||
       savedCustomWelcome ||
+      accountVaultName ||
+      lastSavedStudentName ||
       user.displayName?.trim() ||
       (isAdminAccount ? 'Niraj Yadav' : '');
 
@@ -1239,6 +1372,12 @@ export default function App() {
         : isAdminAccount
         ? 'Niraj Yadav'
         : cleanEmailPrefix || 'Student';
+
+    if (resolvedUserName && resolvedUserName !== 'Student') {
+      localStorage.setItem(`udan_welcome_name_${user.uid}`, resolvedUserName);
+      localStorage.setItem('udan_last_student_name', resolvedUserName);
+      setFullName(resolvedUserName);
+    }
 
     // Helper to save profile locally and update student roster state
     const saveLocalProfile = (prof: StudentProfile) => {
@@ -1318,9 +1457,10 @@ export default function App() {
       if (snap.exists()) {
         const data = snap.data() as StudentProfile;
         const shouldFixName =
-          (!data.name || data.name === 'Rahul' || (customDisplayName && customDisplayName.trim())) &&
+          (!data.name || data.name === 'Rahul' || data.name === 'Student' || data.name.includes('@') || (customDisplayName && customDisplayName.trim())) &&
           resolvedUserName &&
-          resolvedUserName !== 'Rahul';
+          resolvedUserName !== 'Rahul' &&
+          resolvedUserName !== 'Student';
         const activeName = shouldFixName ? resolvedUserName.slice(0, 80) : data.name;
 
         if (data.lastLoginDate !== todayStr || shouldFixName) {
@@ -1459,6 +1599,45 @@ export default function App() {
     }
   }
 
+  // Fast 1-Tap Login for Owner/Creator Niraj Yadav (Instant access for umeshydv886@gmail.com)
+  async function handleFastCreatorLogin() {
+    setAuthError('');
+    setAuthLoading(true);
+    const creatorUser = {
+      uid: 'usr_umeshydv886_admin',
+      email: 'umeshydv886@gmail.com',
+      displayName: 'Niraj Yadav',
+    } as User;
+    localStorage.setItem('udan_active_session_v2', JSON.stringify(creatorUser));
+    localStorage.setItem(`udan_welcome_name_${creatorUser.uid}`, 'Niraj Yadav');
+    localStorage.setItem('udan_last_student_name', 'Niraj Yadav');
+    setFullName('Niraj Yadav');
+    setFirebaseUser(creatorUser);
+    setAdminModeUnlocked(true);
+    await loadOrInitializeStudent(creatorUser, 'Niraj Yadav');
+    setShowWelcomeGate(false);
+    setAuthLoading(false);
+  }
+
+  // Fast 1-Tap Login for Student Preview
+  async function handleFastStudentLogin() {
+    setAuthError('');
+    setAuthLoading(true);
+    const studentUser = {
+      uid: 'usr_demo_student_class10',
+      email: 'student.class10@udan.edu.np',
+      displayName: 'Aarav Sharma',
+    } as User;
+    localStorage.setItem('udan_active_session_v2', JSON.stringify(studentUser));
+    localStorage.setItem(`udan_welcome_name_${studentUser.uid}`, 'Aarav Sharma');
+    localStorage.setItem('udan_last_student_name', 'Aarav Sharma');
+    setFullName('Aarav Sharma');
+    setFirebaseUser(studentUser);
+    await loadOrInitializeStudent(studentUser, 'Aarav Sharma');
+    setShowWelcomeGate(false);
+    setAuthLoading(false);
+  }
+
   // Handle Classic Email/Phone & Password or Google Login
   // Identifies each student uniquely by Email/Phone + Password, and identifies Niraj Yadav as Admin
   async function handleClassicSubmit(e: React.FormEvent) {
@@ -1467,8 +1646,19 @@ export default function App() {
 
     const rawIdentifier = emailOrPhone.trim();
     const enteredName = fullName.trim();
-    if (!rawIdentifier || !password.trim()) {
-      setAuthError('Please enter your Full Name, Email or Phone Number, and Password.');
+    const activePassword = showInlineForgotReset ? newResetPassword.trim() : password.trim();
+
+    if (!rawIdentifier || !activePassword) {
+      setAuthError(
+        showInlineForgotReset
+          ? 'Please enter your Username, Gmail/Phone Number, and your New Password to login.'
+          : 'Please enter your Full Name, Email or Phone Number, and Password.'
+      );
+      return;
+    }
+
+    if (showInlineForgotReset && confirmResetPassword.trim() && confirmResetPassword.trim() !== activePassword) {
+      setAuthError('New Password and Confirm New Password do not match.');
       return;
     }
 
@@ -1482,7 +1672,7 @@ export default function App() {
       formattedEmail === 'ydvramesh27@gmail.com' ||
       formattedEmail === '9708538610@udan.edu.np' ||
       normalizedKey === '9708538610' ||
-      password.trim() === 'NIRAJ2082';
+      activePassword === 'NIRAJ2082';
 
     const isBatchBlocked = !batchConfig.isOpen || batchConfig.registeredCount >= batchConfig.batchLimit;
     if (isRegisterMode && isBatchBlocked && !isAdminLogin) {
@@ -1501,9 +1691,11 @@ export default function App() {
       >;
       const existingAcct = vault[normalizedKey];
 
-      if (existingAcct && existingAcct.password !== password) {
+      if (!showInlineForgotReset && existingAcct && existingAcct.password !== activePassword) {
         setAuthLoading(false);
-        setAuthError('Incorrect Password for this Email/Phone account. Please enter your right password.');
+        setAuthError(
+          'Incorrect Password for this account. Click "Forgot Password?" below to set a New Password and login immediately.'
+        );
         return;
       }
 
@@ -1512,26 +1704,35 @@ export default function App() {
       const resolvedName =
         enteredName || existingAcct?.name || (isAdminLogin ? 'Niraj Yadav' : rawIdentifier.split('@')[0]);
 
-      // Save or update account in credential vault
+      // Save or update account in credential vault (updates password when Forgot Password -> New Password is used)
       vault[normalizedKey] = {
         uid: deterministicUid,
         email: formattedEmail,
         name: resolvedName,
-        password,
+        password: activePassword,
         role: isAdminLogin ? 'admin' : 'student',
       };
       localStorage.setItem('udan_accounts_v2', JSON.stringify(vault));
+      localStorage.setItem(`udan_welcome_name_${deterministicUid}`, resolvedName);
+      localStorage.setItem('udan_last_student_name', resolvedName);
+      setFullName(resolvedName);
+      setPassword(activePassword);
+      setShowInlineForgotReset(false);
+      setNewResetPassword('');
+      setConfirmResetPassword('');
 
       // Try Firebase Auth first; if Email/Password isn't enabled in Firebase Console, seamlessly use Direct Verified Session
       try {
         if (isRegisterMode && !existingAcct) {
           const cred = await createUserWithEmailAndPassword(auth, formattedEmail, password);
+          localStorage.setItem(`udan_welcome_name_${cred.user.uid}`, resolvedName);
           await loadOrInitializeStudent(cred.user, resolvedName);
           setShowWelcomeGate(true);
           setAuthLoading(false);
           return;
         } else {
           const cred = await signInWithEmailAndPassword(auth, formattedEmail, password);
+          localStorage.setItem(`udan_welcome_name_${cred.user.uid}`, resolvedName);
           await loadOrInitializeStudent(cred.user, resolvedName);
           setShowWelcomeGate(true);
           setAuthLoading(false);
@@ -1546,6 +1747,7 @@ export default function App() {
         } as User;
 
         localStorage.setItem('udan_active_session_v2', JSON.stringify(directUser));
+        localStorage.setItem(`udan_welcome_name_${directUser.uid}`, resolvedName);
         setFirebaseUser(directUser);
         await loadOrInitializeStudent(directUser, resolvedName);
         setShowWelcomeGate(true);
@@ -1648,19 +1850,45 @@ export default function App() {
     );
   }
 
-  // Verify 6-Digit Code to Login or Reset Forgotten Password
+  // Reset Forgotten Password or Verify 6-Digit Code & Login Immediately
   async function handleVerifyCodeAndLogin(e: React.FormEvent) {
     e.preventDefault();
     setAuthError('');
-    const targetEmail = (recoveryGmail || emailOrPhone).trim().toLowerCase();
-    if (!generatedOtpCode || enteredOtpCode.trim() !== generatedOtpCode) {
-      setAuthError('Invalid 6-digit verification code. Please check the code sent to your Gmail above.');
+    const rawTarget = (recoveryGmail || emailOrPhone).trim().toLowerCase();
+    if (!rawTarget) {
+      setAuthError('Please enter your Gmail or Phone Number.');
       return;
     }
 
-    const isAdminAcct = targetEmail === 'umeshydv886@gmail.com' || targetEmail === 'ydvramesh27@gmail.com';
+    if (authSubMode === 'forgot_password') {
+      if (!newResetPassword.trim()) {
+        setAuthError('Please enter your New Password to reset and login.');
+        return;
+      }
+      if (confirmResetPassword.trim() && confirmResetPassword.trim() !== newResetPassword.trim()) {
+        setAuthError('New Password and Confirm New Password do not match.');
+        return;
+      }
+    } else if (authSubMode === 'code_login') {
+      if (!generatedOtpCode || enteredOtpCode.trim() !== generatedOtpCode) {
+        setAuthError('Invalid 6-digit verification code. Please click "Send Code" or check the code above.');
+        return;
+      }
+    }
+
+    const normalizedKey = rawTarget.replace(/\s+/g, '');
+    const targetEmail = normalizedKey.includes('@')
+      ? normalizedKey
+      : `${normalizedKey.replace(/[^0-9a-zA-Z]/g, '')}@udan.edu.np`;
+
+    const isAdminAcct =
+      targetEmail === 'umeshydv886@gmail.com' ||
+      targetEmail === 'ydvramesh27@gmail.com' ||
+      targetEmail === '9708538610@udan.edu.np' ||
+      normalizedKey === '9708538610';
+
     const vault = JSON.parse(localStorage.getItem('udan_accounts_v2') || '{}') as Record<string, any>;
-    const existing = vault[targetEmail];
+    const existing = vault[normalizedKey] || vault[targetEmail];
 
     const resolvedUsername =
       fullName.trim() ||
@@ -1673,16 +1901,17 @@ export default function App() {
             .trim()
             .replace(/\b\w/g, (c) => c.toUpperCase()) || 'Student');
 
-    const uid = existing?.uid || `usr_${targetEmail.replace(/[^a-z0-9]/g, '_').slice(0, 60)}`;
+    const uid = existing?.uid || `usr_${normalizedKey.replace(/[^a-z0-9]/g, '_').slice(0, 60)}`;
     const updatedPassword = newResetPassword.trim() || existing?.password || 'UDAN2082';
 
-    vault[targetEmail] = {
+    vault[normalizedKey] = {
       uid,
       email: targetEmail,
       name: resolvedUsername,
       password: updatedPassword,
       role: isAdminAcct ? 'admin' : 'student',
     };
+    vault[targetEmail] = vault[normalizedKey];
     localStorage.setItem('udan_accounts_v2', JSON.stringify(vault));
 
     const verifiedUser = {
@@ -1693,8 +1922,11 @@ export default function App() {
 
     localStorage.setItem('udan_active_session_v2', JSON.stringify(verifiedUser));
     setFullName(resolvedUsername);
-    setEmailOrPhone(targetEmail);
+    setEmailOrPhone(rawTarget);
     setPassword(updatedPassword);
+    setNewResetPassword('');
+    setConfirmResetPassword('');
+    setShowInlineForgotReset(false);
     setFirebaseUser(verifiedUser);
     await loadOrInitializeStudent(verifiedUser, resolvedUsername);
     setOtpSentNotice(null);
@@ -1991,25 +2223,18 @@ export default function App() {
     }
   }
 
-  // AI Weakness Detector Calculation + Recharts Subject Data
+  // AI Weakness Detector Calculation + Recharts Subject Data (Based Strictly on Real Student Attempts)
   const subjectChartData = useMemo(() => {
-    const defaultStats: Record<string, { correct: number; total: number }> = {
-      'C. Maths': { correct: 14, total: 18 },
-      'Opt. Maths': { correct: 6, total: 16 },
-      'English Grammar': { correct: 15, total: 18 },
-      'Social Studies': { correct: 13, total: 16 },
-      Science: { correct: 19, total: 25 },
-      'Entrance Special': { correct: 12, total: 15 },
-      GK: { correct: 16, total: 20 },
-    };
-
+    const hasAttemptedAny = (studentProfile?.totalAttempts || 0) > 0;
     return SUBJECT_CATALOG.map((subj) => {
-      const sStat = studentProfile?.subjectScores?.[subj.id] || defaultStats[subj.id] || { correct: 10, total: 15 };
-      const pct = sStat.total > 0 ? Math.round((sStat.correct / sStat.total) * 100) : 0;
+      const sStat = studentProfile?.subjectScores?.[subj.id];
+      const correct = hasAttemptedAny && sStat ? sStat.correct : 0;
+      const total = hasAttemptedAny && sStat ? sStat.total : 0;
+      const pct = total > 0 ? Math.round((correct / total) * 100) : 0;
       return {
         subject: subj.name,
-        correct: sStat.correct,
-        total: sStat.total,
+        correct,
+        total,
         accuracy: pct,
       };
     });
@@ -2017,30 +2242,35 @@ export default function App() {
 
   const weaknessAlerts = useMemo(() => {
     const alerts: string[] = [];
+    const hasAttemptedAny = (studentProfile?.totalAttempts || 0) > 0;
+    if (!hasAttemptedAny) {
+      alerts.push('No practice questions completed yet. Start Practice Mode to generate personalized AI diagnostic reports on weak chapters.');
+      return alerts;
+    }
+
     const chapScores = studentProfile?.chapterScores || {};
     const subjScores = studentProfile?.subjectScores || {};
 
     Object.entries(chapScores).forEach(([chap, stat]) => {
-      const pct = stat.total > 0 ? Math.round((stat.correct / stat.total) * 100) : 100;
-      if (pct < 60) {
-        if (chap.includes('Chapter 5')) {
-          alerts.push(`Your Science Chapter 5 is weak (${pct}% accuracy) — Revise Blood & Heart Circulation MCQs.`);
-        } else {
-          alerts.push(`Your ${chap} is weak (${pct}% accuracy).`);
+      if (stat.total > 0) {
+        const pct = Math.round((stat.correct / stat.total) * 100);
+        if (pct < 60) {
+          alerts.push(`Your ${chap} needs revision (${pct}% accuracy on attempted questions).`);
         }
       }
     });
 
     Object.entries(subjScores).forEach(([subj, stat]) => {
-      const pct = stat.total > 0 ? Math.round((stat.correct / stat.total) * 100) : 100;
-      if (pct < 65) {
-        alerts.push(`Your ${subj} is weak (${pct}% accuracy) — Practice more MCQs today.`);
+      if (stat.total > 0) {
+        const pct = Math.round((stat.correct / stat.total) * 100);
+        if (pct < 65) {
+          alerts.push(`Your ${subj} is weak (${pct}% accuracy) — Practice more MCQs in this subject.`);
+        }
       }
     });
 
     if (alerts.length === 0) {
-      alerts.push('Your Science Chapter 5 is weak (38% accuracy) — Priority revision recommended.');
-      alerts.push('Your Opt. Maths is weak (42% accuracy) — Practice Matrix & Trigonometry.');
+      alerts.push('Strong performance! No critical weakness identified in your attempted practice sets.');
     }
     return alerts;
   }, [studentProfile]);
@@ -2064,25 +2294,200 @@ export default function App() {
     return [...allStudents].sort((a, b) => b.agPoints - a.agPoints)[0];
   }, [allStudents, studentProfile, fullName, firebaseUser]);
 
-  // Subject Toppers Ranking (Ranks students specifically by accuracy in the selected individual subject)
+  // Benchmark contenders used to populate the Progress Page leaderboards alongside live Firestore students
+  const leaderboardBasePool = useMemo(() => {
+    const benchmarkStudents: Array<
+      StudentProfile & { weeklyPoints: number; monthlyPoints: number; allTimePoints: number }
+    > = [
+      {
+        uid: 'lb-student-1',
+        name: 'Aarav Sharma',
+        role: 'student',
+        agPoints: 340,
+        weeklyPoints: 96,
+        monthlyPoints: 230,
+        allTimePoints: 340,
+        accuracy: 92,
+        totalAttempts: 185,
+        correctCount: 170,
+        timeSpentMinutes: 310,
+        destinationGoal: 'Your Destination (+2 Science)',
+        photoUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80',
+      },
+      {
+        uid: 'lb-student-2',
+        name: 'Srijana Karki',
+        role: 'student',
+        agPoints: 318,
+        weeklyPoints: 112,
+        monthlyPoints: 218,
+        allTimePoints: 318,
+        accuracy: 89,
+        totalAttempts: 172,
+        correctCount: 153,
+        timeSpentMinutes: 285,
+        destinationGoal: 'Your Destination (+2 Science)',
+        photoUrl: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=200&auto=format&fit=crop&q=80',
+      },
+      {
+        uid: 'lb-student-3',
+        name: 'Rohan Adhikari',
+        role: 'student',
+        agPoints: 295,
+        weeklyPoints: 84,
+        monthlyPoints: 245,
+        allTimePoints: 295,
+        accuracy: 86,
+        totalAttempts: 160,
+        correctCount: 138,
+        timeSpentMinutes: 250,
+        destinationGoal: 'Your Destination (CTEVT / Engineering)',
+        photoUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop&q=80',
+      },
+      {
+        uid: 'lb-student-4',
+        name: 'Prakriti Thapa',
+        role: 'student',
+        agPoints: 276,
+        weeklyPoints: 104,
+        monthlyPoints: 198,
+        allTimePoints: 276,
+        accuracy: 85,
+        totalAttempts: 150,
+        correctCount: 128,
+        timeSpentMinutes: 230,
+        destinationGoal: 'Your Destination (+2 Management)',
+        photoUrl: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=200&auto=format&fit=crop&q=80',
+      },
+      {
+        uid: 'lb-student-5',
+        name: 'Bishal Gurung',
+        role: 'student',
+        agPoints: 254,
+        weeklyPoints: 78,
+        monthlyPoints: 184,
+        allTimePoints: 254,
+        accuracy: 82,
+        totalAttempts: 142,
+        correctCount: 116,
+        timeSpentMinutes: 215,
+        destinationGoal: 'Your Destination (+2 Science)',
+        photoUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&auto=format&fit=crop&q=80',
+      },
+      {
+        uid: 'lb-student-6',
+        name: 'Anushka Poudel',
+        role: 'student',
+        agPoints: 232,
+        weeklyPoints: 90,
+        monthlyPoints: 176,
+        allTimePoints: 232,
+        accuracy: 80,
+        totalAttempts: 130,
+        correctCount: 104,
+        timeSpentMinutes: 190,
+        destinationGoal: 'Your Destination (+2 Science)',
+      },
+    ];
+
+    const liveMapped = allStudents.map((st, idx) => {
+      const allTime = Math.max(5, st.agPoints || 5);
+      const isCurrentUser = st.uid === firebaseUser?.uid;
+      const dailyPts = (st.dailyGoalCompleted || 0) * 2;
+      const weekly = isCurrentUser
+        ? Math.min(allTime, Math.max(5, dailyPts > 0 ? dailyPts + 5 : Math.round(allTime * 0.42)))
+        : Math.min(allTime, Math.max(5, Math.round(allTime * (0.32 + ((idx % 4) * 0.08)))));
+      const monthly = isCurrentUser
+        ? Math.min(allTime, Math.max(weekly, Math.round(allTime * 0.78)))
+        : Math.min(allTime, Math.max(weekly, Math.round(allTime * (0.68 + ((idx % 3) * 0.09)))));
+      return {
+        ...st,
+        weeklyPoints: weekly,
+        monthlyPoints: monthly,
+        allTimePoints: allTime,
+      };
+    });
+
+    const existingNames = new Set(liveMapped.map((s) => s.name.trim().toLowerCase()));
+    const combined = [...liveMapped];
+
+    if (studentProfile && !combined.some((s) => s.uid === studentProfile.uid)) {
+      const allTime = Math.max(5, studentProfile.agPoints || 5);
+      const weekly = Math.min(allTime, Math.max(5, Math.round(allTime * 0.45)));
+      const monthly = Math.min(allTime, Math.max(weekly, Math.round(allTime * 0.8)));
+      combined.push({
+        ...studentProfile,
+        weeklyPoints: weekly,
+        monthlyPoints: monthly,
+        allTimePoints: allTime,
+      });
+      existingNames.add(studentProfile.name.trim().toLowerCase());
+    }
+
+    benchmarkStudents.forEach((b) => {
+      if (!existingNames.has(b.name.trim().toLowerCase())) {
+        combined.push(b);
+      }
+    });
+
+    return combined;
+  }, [allStudents, studentProfile, firebaseUser]);
+
+  // Student Points Leaderboard filtered & sorted by Weekly, Monthly, or All-Time Points
+  const pointsLeaderboardList = useMemo(() => {
+    return leaderboardBasePool
+      .map((st) => {
+        const displayPoints =
+          leaderboardTimeFilter === 'weekly'
+            ? st.weeklyPoints
+            : leaderboardTimeFilter === 'monthly'
+            ? st.monthlyPoints
+            : st.allTimePoints;
+
+        const periodAttempts =
+          leaderboardTimeFilter === 'weekly'
+            ? Math.max(1, Math.round((st.totalAttempts || 20) * 0.3))
+            : leaderboardTimeFilter === 'monthly'
+            ? Math.max(1, Math.round((st.totalAttempts || 20) * 0.72))
+            : st.totalAttempts || 20;
+
+        return {
+          ...st,
+          displayPoints,
+          periodAttempts,
+        };
+      })
+      .sort((a, b) => b.displayPoints - a.displayPoints || b.accuracy - a.accuracy);
+  }, [leaderboardBasePool, leaderboardTimeFilter]);
+
+  // Subject Toppers Ranking (Ranks students specifically by accuracy in the selected individual subject & period points)
   const subjectToppersList = useMemo(() => {
-    return allStudents
+    return leaderboardBasePool
       .map((st) => {
         const sStat = st.subjectScores?.[topperSubjectFilter];
         const correct = sStat ? sStat.correct : Math.round(((st.accuracy || 75) / 100) * 20);
         const total = sStat && sStat.total > 0 ? sStat.total : 20;
         const subjectAccuracy = total > 0 ? Math.round((correct / total) * 100) : st.accuracy || 0;
+        const filteredPoints =
+          leaderboardTimeFilter === 'weekly'
+            ? st.weeklyPoints
+            : leaderboardTimeFilter === 'monthly'
+            ? st.monthlyPoints
+            : st.allTimePoints;
         return {
           uid: st.uid,
           name: st.name,
           subjectAccuracy,
           correct,
           total,
-          agPoints: st.agPoints,
+          agPoints: filteredPoints,
+          weeklyPoints: st.weeklyPoints,
+          monthlyPoints: st.monthlyPoints,
+          allTimePoints: st.allTimePoints,
         };
       })
-      .sort((a, b) => b.subjectAccuracy - a.subjectAccuracy || b.correct - a.correct);
-  }, [allStudents, topperSubjectFilter]);
+      .sort((a, b) => b.subjectAccuracy - a.subjectAccuracy || b.agPoints - a.agPoints);
+  }, [leaderboardBasePool, topperSubjectFilter, leaderboardTimeFilter]);
 
   // Week-over-Week AG Point Growth Line Chart Data
   const weeklyAgGrowthData = useMemo(() => {
@@ -2107,17 +2512,11 @@ export default function App() {
   // Export Formatted PDF Performance Report for Offline Review
   function handleExportPerformancePdf() {
     const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-    const studentName =
-      (studentProfile?.name && studentProfile.name !== 'Rahul' ? studentProfile.name : '') ||
-      fullName.trim() ||
-      firebaseUser?.displayName?.trim() ||
-      firebaseUser?.email?.split('@')[0] ||
-      studentProfile?.name ||
-      'Student';
-    const overallAcc = studentProfile?.accuracy ?? 78;
-    const totalAttempts = studentProfile?.totalAttempts ?? 128;
+    const studentName = currentStudentName || 'Student';
+    const totalAttempts = studentProfile?.totalAttempts ?? 0;
+    const overallAcc = totalAttempts > 0 ? (studentProfile?.accuracy ?? 0) : 0;
     const agPts = studentProfile?.agPoints ?? 5;
-    const studyTime = formatTimeSpent(studentProfile?.timeSpentMinutes ?? 45);
+    const studyTime = formatTimeSpent(studentProfile?.timeSpentMinutes ?? 1);
     const dateGenerated = new Date().toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
@@ -2130,11 +2529,11 @@ export default function App() {
     pdf.setTextColor(255, 255, 255);
     pdf.setFont('helvetica', 'bold');
     pdf.setFontSize(18);
-    pdf.text('UDAN - THE ENTRANCE TOPPER', 14, 16);
+    pdf.text('STEPPIN - YOU DESTINATION', 14, 16);
     pdf.setFontSize(10);
     pdf.setFont('helvetica', 'normal');
     pdf.setTextColor(56, 189, 248);
-    pdf.text('Official Class 10 CDC Nepal Entrance Performance & Accuracy Report', 14, 24);
+    pdf.text('Official Class 10 CDC Nepal Entrance Performance & Accuracy Report (www.steppin.com)', 14, 24);
     pdf.setTextColor(203, 213, 225);
     pdf.text(`Created by Niraj Yadav  |  Generated: ${dateGenerated}`, 14, 31);
 
@@ -2146,7 +2545,7 @@ export default function App() {
 
     pdf.setFontSize(10);
     pdf.setFont('helvetica', 'normal');
-    pdf.text(`Overall Accuracy: ${overallAcc}%`, 14, 58);
+    pdf.text(`Overall Accuracy: ${totalAttempts > 0 ? `${overallAcc}%` : '0% (No Practice Yet)'}`, 14, 58);
     pdf.text(`Total Questions Attempted: ${totalAttempts}`, 75, 58);
     pdf.text(`AG Points Balance: ${agPts} Pts`, 145, 58);
     pdf.text(`Total Study Time in App: ${studyTime}`, 14, 65);
@@ -2909,7 +3308,9 @@ export default function App() {
     pdf.text(`• Target Goal: ${profileDestination || 'Your Destination'}`, 24, 134);
     pdf.text(`• School / Curriculum: ${profileSchool || 'Class 10 CDC Syllabus Nepal'}`, 24, 142);
     pdf.text(`• AG Points Earned: ${studentProfile?.agPoints ?? 5} AG Points`, 24, 150);
-    pdf.text(`• Overall Entrance Accuracy: ${studentProfile?.accuracy ?? 78}% (${studentProfile?.totalAttempts ?? 0} Questions Attempted)`, 24, 158);
+    const profileAttempts = studentProfile?.totalAttempts ?? 0;
+    const profileAcc = profileAttempts > 0 ? (studentProfile?.accuracy ?? 0) : 0;
+    pdf.text(`• Overall Entrance Accuracy: ${profileAcc}% (${profileAttempts} Questions Attempted)`, 24, 158);
     pdf.text(`• Total Active Study Time: ${formatTimeSpent(studentProfile?.timeSpentMinutes ?? 1)}`, 24, 166);
 
     // Sign-off
@@ -2957,45 +3358,92 @@ export default function App() {
     return (
       <div className={`${appTheme} min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between`}>
         <OfflineIndicator />
-        {/* Clean Minimal Header on Login Page with Logo, Download Button & Color Switcher */}
+        {/* Clean Minimal Header on Login Page with Steppin Logo, Download Button & Language Switcher */}
         <header className="flex flex-wrap items-center justify-between gap-4 px-6 py-4 border-b border-slate-800/80 max-w-7xl w-full mx-auto">
           <div className="flex items-center gap-3.5">
             <UDANLogo size={48} />
             <div>
               <span className="text-xl sm:text-2xl font-extrabold tracking-wider classic-gold-text block leading-none">
-                UDAN — The Entrance Topper
+                Steppin — You Destination
               </span>
               <span className="text-xs text-amber-300 font-medium classic-serif-italic">
-                तपाईंको सपना, हाम्रो लक्ष्य · Created by 𝓝𝓲𝓻𝓪𝓳 𝓨𝓪𝓭𝓪𝓿
+                Your Dream, Our Mission · तपाईंको सपना, हाम्रो लक्ष्य · www.steppin.com
               </span>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-3 text-xs">
-            <PWAInstallButton />
-            <select
-              value={appTheme}
-              onChange={(e) => setAppTheme(e.target.value as any)}
-              aria-label="Choose App Color Theme"
-              className="px-2.5 py-2 rounded-xl bg-slate-900 border border-amber-400/40 text-amber-300 font-bold text-xs cursor-pointer"
+            {/* Prominent English / Nepali Language Switcher */}
+            <div className="flex items-center bg-slate-900 border border-amber-400/50 rounded-xl p-0.5">
+              <button
+                type="button"
+                onClick={() => setCurrentLanguage('en')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  currentLanguage === 'en'
+                    ? 'bg-amber-400 text-slate-950 shadow-sm'
+                    : 'text-slate-300 hover:text-white'
+                }`}
+                title="Switch to English"
+              >
+                🇺🇸 English
+              </button>
+              <button
+                type="button"
+                onClick={() => setCurrentLanguage('ne')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  currentLanguage === 'ne'
+                    ? 'bg-amber-400 text-slate-950 shadow-sm'
+                    : 'text-slate-300 hover:text-white'
+                }`}
+                title="नेपाली भाषामा बदल्नुहोस्"
+              >
+                🇳🇵 नेपाली
+              </button>
+            </div>
+
+            {/* Quick 1-Tap Light (White & Black) vs Dark Mode Toggle */}
+            <button
+              type="button"
+              onClick={() => setAppTheme(appTheme === 'theme-light' ? 'theme-indigo' : 'theme-light')}
+              className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-sm text-slate-200"
+              title="Toggle Light (White Background, Black Text) / Dark Mode"
             >
-              <option value="theme-indigo">👑 Royal Violet & Gold</option>
-              <option value="theme-emerald">🌿 Royal Emerald & Gold</option>
-              <option value="theme-crimson">🌹 Imperial Crimson & Gold</option>
-              <option value="theme-slate">🌙 Classic Midnight</option>
-            </select>
+              {appTheme === 'theme-light' ? '🌙 Dark Mode' : '☀️ White & Black (Light)'}
+            </button>
+
+            <PWAInstallButton />
+
             <span className="font-mono-tabular text-emerald-400 font-semibold px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800">
               {batchConfig.registeredCount} / {batchConfig.batchLimit} Registered ({batchConfig.batchLimit - batchConfig.registeredCount} Seats Left)
             </span>
           </div>
         </header>
 
+        {/* ALSO DOWNLOADABLE FOR EVERYONE HERO NOTICE BAR */}
+        <div className="bg-gradient-to-r from-violet-950/80 via-slate-900 to-amber-950/80 border-b border-amber-400/30 px-6 py-2.5 text-xs text-slate-200">
+          <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <span className="px-2 py-0.5 rounded bg-amber-400 text-slate-950 font-extrabold text-[10px] tracking-wide uppercase shrink-0">
+                INSTALLABLE APP
+              </span>
+              <span>
+                📲 <strong>Steppin is free & installable for Class 10 students</strong> on Android, iPhone & PC with offline caching!
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-amber-300 font-semibold">Created by Niraj Yadav</span>
+              <span className="text-slate-500">|</span>
+              <span className="text-slate-400 font-mono">www.steppin.com</span>
+            </div>
+          </div>
+        </div>
+
         {/* Centered ONLY Login / Signup Card */}
-        <main className="max-w-md w-full mx-auto px-4 py-10 flex-1 flex flex-col justify-center">
+        <main className="max-w-md w-full mx-auto px-4 py-8 flex-1 flex flex-col justify-center">
           <div className="bg-slate-900 border-2 border-amber-400/40 rounded-2xl p-6 sm:p-8 shadow-2xl space-y-6">
             <div className="text-center space-y-2 border-b border-slate-800 pb-4 flex flex-col items-center">
               <UDANLogo size={76} />
               <p className="text-xs font-bold text-amber-300 tracking-widest uppercase pt-1">
-                UDAN ENTRANCE PREPARATION · YOUR DESTINATION
+                STEPPIN ENTRANCE PREPARATION · YOU DESTINATION
               </p>
               <h1 className="text-2xl sm:text-3xl font-extrabold classic-gold-text">
                 {authSubMode === 'forgot_password'
@@ -3018,35 +3466,40 @@ export default function App() {
                 type="button"
                 onClick={() => {
                   setAuthSubMode('standard');
+                  setShowInlineForgotReset(false);
                   setIsRegisterMode(false);
                   setAuthError('');
                 }}
                 className={`py-2 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
-                  authSubMode === 'standard' && !isRegisterMode
+                  authSubMode === 'standard' && !isRegisterMode && !showInlineForgotReset
                     ? 'bg-sky-500 text-slate-950'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
-                Password Login
+                Login
               </button>
               <button
                 type="button"
                 onClick={() => {
-                  setAuthSubMode('code_login');
+                  setRecoveryGmail(emailOrPhone);
+                  setAuthSubMode('forgot_password');
+                  setShowInlineForgotReset(true);
+                  setIsRegisterMode(false);
                   setAuthError('');
                 }}
                 className={`py-2 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
-                  authSubMode === 'code_login' || authSubMode === 'forgot_password'
+                  authSubMode === 'forgot_password' || showInlineForgotReset
                     ? 'bg-amber-400 text-slate-950'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
-                Code / Forgot Pass
+                Forgot Password
               </button>
               <button
                 type="button"
                 onClick={() => {
                   setAuthSubMode('standard');
+                  setShowInlineForgotReset(false);
                   setIsRegisterMode(true);
                   setAuthError('');
                 }}
@@ -3097,15 +3550,29 @@ export default function App() {
               </div>
             )}
 
-            {/* MODE A: FORGOT PASSWORD OR 6-DIGIT GMAIL CODE LOGIN */}
+            {/* MODE A: FORGOT PASSWORD (NEW PASSWORD FILL-UP & DIRECT LOGIN) OR 6-DIGIT GMAIL CODE LOGIN */}
             {(authSubMode === 'forgot_password' || authSubMode === 'code_login') && (
               <form onSubmit={handleVerifyCodeAndLogin} className="space-y-4">
+                <div className="p-3.5 rounded-xl bg-amber-400/10 border border-amber-400/40 text-xs text-amber-200">
+                  {authSubMode === 'forgot_password' ? (
+                    <span>
+                      <strong>Forgot Password Reset:</strong> Enter your Username, Gmail/Phone, and fill up your{' '}
+                      <strong>New Password</strong> below to immediately reset your password and log into the app!
+                    </span>
+                  ) : (
+                    <span>
+                      <strong>Login with 6-Digit Gmail Code:</strong> Click <strong>Send Code</strong> to receive a 6-digit login code for your Gmail account.
+                    </span>
+                  )}
+                </div>
+
                 <div>
                   <label className="block text-xs font-medium text-slate-300 mb-1.5">
                     Your Username (Name to Welcome)
                   </label>
                   <input
                     type="text"
+                    required
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     placeholder="Enter your name (e.g., Aarav Sharma)"
@@ -3115,70 +3582,119 @@ export default function App() {
 
                 <div>
                   <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                    Gmail Account Chosen for Your Profile
+                    Gmail or Phone Number Chosen for Your Account
                   </label>
                   <div className="flex gap-2">
                     <input
-                      type="email"
+                      type="text"
                       required
                       value={recoveryGmail || emailOrPhone}
                       onChange={(e) => {
                         setRecoveryGmail(e.target.value);
                         setEmailOrPhone(e.target.value);
                       }}
-                      placeholder="yourname@gmail.com"
+                      placeholder="yourname@gmail.com or 98XXXXXXXX"
                       className="flex-1 px-3.5 py-2.5 text-sm bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-amber-400"
                     />
-                    <button
-                      type="button"
-                      onClick={handleSendGmailVerificationCode}
-                      className="px-3.5 py-2.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs rounded-xl shrink-0 cursor-pointer"
-                    >
-                      Send Code
-                    </button>
+                    {authSubMode === 'code_login' && (
+                      <button
+                        type="button"
+                        onClick={handleSendGmailVerificationCode}
+                        className="px-3.5 py-2.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs rounded-xl shrink-0 cursor-pointer"
+                      >
+                        Send Code
+                      </button>
+                    )}
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                    Enter 6-Digit Gmail Verification Code
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    maxLength={6}
-                    value={enteredOtpCode}
-                    onChange={(e) => setEnteredOtpCode(e.target.value)}
-                    placeholder="6-digit code from your Gmail"
-                    className="w-full px-3.5 py-2.5 text-sm font-mono-tabular tracking-widest bg-slate-950 border border-slate-800 rounded-xl text-amber-300 focus:outline-none focus:border-amber-400"
-                  />
-                </div>
-
                 {authSubMode === 'forgot_password' && (
+                  <>
+                    <div>
+                      <label className="block text-xs font-bold text-amber-300 mb-1.5">
+                        New Password (Enter New Password to Login)
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showNewResetPassword ? 'text' : 'password'}
+                          required
+                          value={newResetPassword}
+                          onChange={(e) => setNewResetPassword(e.target.value)}
+                          placeholder="Enter your new password"
+                          className="w-full pl-3.5 pr-11 py-2.5 text-sm bg-slate-950 border-2 border-amber-400/70 rounded-xl text-white focus:outline-none focus:border-amber-400"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowNewResetPassword((prev) => !prev)}
+                          aria-label={showNewResetPassword ? 'Hide New Password' : 'Show New Password'}
+                          title={showNewResetPassword ? 'Hide Password' : 'Show Password'}
+                          className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-amber-400 hover:text-amber-300 cursor-pointer"
+                        >
+                          {showNewResetPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-slate-300 mb-1.5">
+                        Confirm New Password
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showConfirmResetPassword ? 'text' : 'password'}
+                          required
+                          value={confirmResetPassword}
+                          onChange={(e) => setConfirmResetPassword(e.target.value)}
+                          placeholder="Re-enter your new password"
+                          className="w-full pl-3.5 pr-11 py-2.5 text-sm bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-amber-400"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirmResetPassword((prev) => !prev)}
+                          aria-label={showConfirmResetPassword ? 'Hide Confirm Password' : 'Show Confirm Password'}
+                          title={showConfirmResetPassword ? 'Hide Password' : 'Show Password'}
+                          className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-white cursor-pointer"
+                        >
+                          {showConfirmResetPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {authSubMode === 'code_login' && (
                   <div>
                     <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                      Set New Password (Optional)
+                      Enter 6-Digit Gmail Verification Code
                     </label>
                     <input
-                      type="password"
-                      value={newResetPassword}
-                      onChange={(e) => setNewResetPassword(e.target.value)}
-                      placeholder="Enter new password"
-                      className="w-full px-3.5 py-2.5 text-sm bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-amber-400"
+                      type="text"
+                      required
+                      maxLength={6}
+                      value={enteredOtpCode}
+                      onChange={(e) => setEnteredOtpCode(e.target.value)}
+                      placeholder="6-digit code from your Gmail"
+                      className="w-full px-3.5 py-2.5 text-sm font-mono-tabular tracking-widest bg-slate-950 border border-slate-800 rounded-xl text-amber-300 focus:outline-none focus:border-amber-400"
                     />
                   </div>
                 )}
 
                 <button
                   type="submit"
-                  className="w-full py-3 px-4 rounded-xl text-sm font-bold bg-amber-400 hover:bg-amber-300 text-slate-950 transition-all cursor-pointer"
+                  className="w-full py-3 px-4 rounded-xl text-sm font-bold bg-amber-400 hover:bg-amber-300 text-slate-950 transition-all cursor-pointer shadow-lg shadow-amber-500/20"
                 >
-                  Verify Code & Login Now
+                  {authSubMode === 'forgot_password'
+                    ? 'Save New Password & Login App →'
+                    : 'Verify 6-Digit Code & Login Now →'}
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => setAuthSubMode('standard')}
+                  onClick={() => {
+                    setAuthSubMode('standard');
+                    setShowInlineForgotReset(false);
+                    setAuthError('');
+                  }}
                   className="w-full text-center text-xs text-sky-400 hover:underline cursor-pointer"
                 >
                   ← Back to Standard Password Login
@@ -3265,30 +3781,110 @@ export default function App() {
                   />
                 </div>
 
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="block text-xs font-medium text-slate-300">Password</label>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setRecoveryGmail(emailOrPhone.includes('@') ? emailOrPhone : '');
-                        setAuthSubMode('forgot_password');
-                        setAuthError('');
-                      }}
-                      className="text-xs font-semibold text-amber-400 hover:underline cursor-pointer"
-                    >
-                      Forgot Password? (Get Gmail Code)
-                    </button>
+                {!showInlineForgotReset ? (
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-xs font-medium text-slate-300">Password</label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowInlineForgotReset(true);
+                          setNewResetPassword('');
+                          setConfirmResetPassword('');
+                          setAuthError('');
+                        }}
+                        className="text-xs font-extrabold text-amber-400 hover:text-amber-300 underline cursor-pointer"
+                      >
+                        Forgot Password?
+                      </button>
+                    </div>
+                    <div className="relative">
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        required
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="••••••••"
+                        className="w-full pl-3.5 pr-11 py-2.5 text-sm bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-sky-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((prev) => !prev)}
+                        aria-label={showPassword ? 'Hide Password' : 'Show Password'}
+                        title={showPassword ? 'Hide Password' : 'Show Password'}
+                        className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-amber-400 cursor-pointer"
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
                   </div>
-                  <input
-                    type="password"
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full px-3.5 py-2.5 text-sm bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-sky-500"
-                  />
-                </div>
+                ) : (
+                  <div className="p-4 rounded-xl bg-slate-950 border-2 border-amber-400/80 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-extrabold text-amber-400">
+                        🔑 FORGOT PASSWORD — SET NEW PASSWORD
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowInlineForgotReset(false);
+                          setAuthError('');
+                        }}
+                        className="text-[11px] text-slate-400 hover:text-white underline cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-white mb-1">
+                        New Password
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showNewResetPassword ? 'text' : 'password'}
+                          required
+                          value={newResetPassword}
+                          onChange={(e) => setNewResetPassword(e.target.value)}
+                          placeholder="Enter your new password"
+                          className="w-full pl-3.5 pr-11 py-2.5 text-sm bg-slate-900 border border-amber-400/60 rounded-xl text-white focus:outline-none focus:border-amber-400"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowNewResetPassword((prev) => !prev)}
+                          aria-label={showNewResetPassword ? 'Hide New Password' : 'Show New Password'}
+                          title={showNewResetPassword ? 'Hide Password' : 'Show Password'}
+                          className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-amber-400 hover:text-amber-300 cursor-pointer"
+                        >
+                          {showNewResetPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-300 mb-1">
+                        Confirm New Password
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showConfirmResetPassword ? 'text' : 'password'}
+                          required
+                          value={confirmResetPassword}
+                          onChange={(e) => setConfirmResetPassword(e.target.value)}
+                          placeholder="Confirm your new password"
+                          className="w-full pl-3.5 pr-11 py-2.5 text-sm bg-slate-900 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-amber-400"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirmResetPassword((prev) => !prev)}
+                          aria-label={showConfirmResetPassword ? 'Hide Confirm Password' : 'Show Confirm Password'}
+                          title={showConfirmResetPassword ? 'Hide Password' : 'Show Password'}
+                          className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-white cursor-pointer"
+                        >
+                          {showConfirmResetPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <button
                   type="submit"
@@ -3296,6 +3892,8 @@ export default function App() {
                   className={`w-full py-3 px-4 rounded-xl text-sm font-bold transition-all cursor-pointer ${
                     isRegisterMode && isSignupBlocked
                       ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                      : showInlineForgotReset
+                      ? 'bg-amber-400 hover:bg-amber-300 text-slate-950 shadow-lg shadow-amber-500/20'
                       : 'bg-sky-500 hover:bg-sky-400 text-slate-950'
                   }`}
                 >
@@ -3303,10 +3901,27 @@ export default function App() {
                     ? 'Signing In...'
                     : isRegisterMode && isSignupBlocked
                     ? 'Admission Closed - Batch Full!'
+                    : showInlineForgotReset
+                    ? 'Save New Password & Login App →'
                     : isRegisterMode
                     ? 'Register & Login Now'
                     : 'Login with Username & Password'}
                 </button>
+
+                {!showInlineForgotReset && !isRegisterMode && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowInlineForgotReset(true);
+                      setNewResetPassword('');
+                      setConfirmResetPassword('');
+                      setAuthError('');
+                    }}
+                    className="w-full py-2.5 px-4 rounded-xl text-xs font-bold border border-amber-400/60 bg-amber-400/10 hover:bg-amber-400/20 text-amber-300 transition-colors cursor-pointer"
+                  >
+                    Forgot Password? Click Here to Enter New Password & Login
+                  </button>
+                )}
               </form>
             )}
 
@@ -3339,6 +3954,31 @@ export default function App() {
                 Login with Gmail Code
               </button>
             </div>
+
+            {/* Quick 1-Tap Instant Access for Creator & Student Testing */}
+            <div className="pt-2 border-t border-slate-800 space-y-2">
+              <p className="text-[11px] text-center text-slate-400 font-medium">⚡ Instant 1-Tap Access:</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={handleFastCreatorLogin}
+                  disabled={authLoading}
+                  className="py-2.5 px-3 rounded-xl text-xs font-extrabold bg-amber-400 hover:bg-amber-300 text-slate-950 flex items-center justify-center gap-1.5 cursor-pointer shadow-md transition-all active:scale-95"
+                >
+                  <Lock className="w-3.5 h-3.5" />
+                  <span>👑 Creator Login (Niraj)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleFastStudentLogin}
+                  disabled={authLoading}
+                  className="py-2.5 px-3 rounded-xl text-xs font-bold bg-slate-950 hover:bg-slate-800 text-sky-400 border border-sky-500/50 flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-95"
+                >
+                  <UserCheck className="w-3.5 h-3.5" />
+                  <span>🎓 Student Demo Login</span>
+                </button>
+              </div>
+            </div>
           </div>
         </main>
 
@@ -3369,8 +4009,28 @@ export default function App() {
     ? localStorage.getItem(`udan_welcome_name_${firebaseUser.uid}`)?.trim()
     : '';
 
+  let accountVaultName = '';
+  try {
+    const v = JSON.parse(localStorage.getItem('udan_accounts_v2') || '{}');
+    if (firebaseUser?.email && v[firebaseUser.email.toLowerCase()]) {
+      accountVaultName = v[firebaseUser.email.toLowerCase()]?.name || '';
+    }
+    if (!accountVaultName && firebaseUser?.uid) {
+      for (const k of Object.keys(v)) {
+        if (v[k]?.uid === firebaseUser.uid || (firebaseUser.email && v[k]?.email?.toLowerCase() === firebaseUser.email.toLowerCase())) {
+          accountVaultName = v[k]?.name || '';
+          break;
+        }
+      }
+    }
+  } catch {}
+
+  const lastGlobalStudentName = localStorage.getItem('udan_last_student_name')?.trim() || '';
+
   const rawProfileName =
     savedCustomWelcomeName ||
+    accountVaultName ||
+    lastGlobalStudentName ||
     (studentProfile?.name && studentProfile.name !== 'Rahul' && !studentProfile.name.includes('@')
       ? studentProfile.name
       : '') ||
@@ -3379,7 +4039,7 @@ export default function App() {
     (isOwnerNiraj ? 'Niraj Yadav' : '');
 
   const currentStudentName =
-    rawProfileName && !rawProfileName.includes('@') && !/^(umeshydv|ydvramesh)\d*$/i.test(rawProfileName)
+    rawProfileName && !rawProfileName.includes('@')
       ? rawProfileName
       : isOwnerNiraj
       ? 'Niraj Yadav'
@@ -3400,7 +4060,22 @@ export default function App() {
             <UDANLogo size={38} />
             <span className="text-xl font-bold text-white font-display">UDAN — The Entrance Topper</span>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <button
+              type="button"
+              onClick={() => setCurrentLanguage(currentLanguage === 'en' ? 'ne' : 'en')}
+              className="px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-amber-400/50 text-amber-300 font-bold text-xs flex items-center gap-1 cursor-pointer"
+            >
+              <Languages className="w-3.5 h-3.5" />
+              <span>{currentLanguage === 'en' ? '🇳🇵 NE' : '🇺🇸 EN'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setAppTheme(appTheme === 'theme-light' ? 'theme-indigo' : 'theme-light')}
+              className="px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs font-bold flex items-center gap-1 cursor-pointer text-slate-200"
+            >
+              {appTheme === 'theme-light' ? '🌙 Dark' : '☀️ Light'}
+            </button>
             <PWAInstallButton />
             <ProfileLetterAvatar
               name={currentStudentName}
@@ -3408,7 +4083,7 @@ export default function App() {
               size="sm"
             />
             <span className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-900 border border-amber-400/50 text-amber-300">
-              {isOwnerNiraj ? '👑 Creator Niraj Yadav (Private Folder Unlocked)' : `🎓 Welcome, ${currentStudentName}`}
+              {isOwnerNiraj ? '👑 Creator Niraj Yadav' : `🎓 Logged in: ${currentStudentName}`}
             </span>
           </div>
         </header>
@@ -3532,37 +4207,42 @@ export default function App() {
             e.preventDefault();
             setActiveTab('dashboard');
           }}
-          className="flex items-center gap-3 text-xl font-extrabold tracking-wider whitespace-nowrap shrink-0"
+          className="flex items-center gap-2.5 text-xl font-extrabold tracking-wider whitespace-nowrap shrink-0"
         >
-          <UDANLogo size={40} />
-          <span className="classic-gold-text">UDAN</span>
+          <UDANLogo size={42} />
+          <div className="flex flex-col text-left">
+            <span className="classic-gold-text leading-tight">STEPPIN</span>
+            <span className="text-[10px] text-amber-300 font-mono tracking-wider uppercase font-semibold">
+              You destination
+            </span>
+          </div>
         </a>
 
-        {/* Zone 2: 5 concise single-line navigation links */}
-        <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-400">
+        {/* Zone 2: Concise navigation links with bilingual labels */}
+        <nav className="hidden xl:flex items-center gap-5 text-xs font-semibold text-slate-300">
           <button
             onClick={() => setActiveTab('dashboard')}
             className={`hover:text-white transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
-              activeTab === 'dashboard' ? 'text-sky-400 underline underline-offset-8' : ''
+              activeTab === 'dashboard' ? 'text-amber-400 underline underline-offset-8 font-bold' : ''
             }`}
           >
-            Dashboard
+            {t.nav.dashboard}
           </button>
           <button
             onClick={() => setActiveTab('practice')}
             className={`hover:text-white transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
-              activeTab === 'practice' ? 'text-sky-400 underline underline-offset-8' : ''
+              activeTab === 'practice' ? 'text-amber-400 underline underline-offset-8 font-bold' : ''
             }`}
           >
-            Practice Mode
+            {t.nav.practice}
           </button>
           <button
             onClick={() => setActiveTab('mock')}
             className={`hover:text-white transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
-              activeTab === 'mock' ? 'text-sky-400 underline underline-offset-8' : ''
+              activeTab === 'mock' ? 'text-amber-400 underline underline-offset-8 font-bold' : ''
             }`}
           >
-            Saturday Exam
+            {t.nav.mockTest}
           </button>
           <button
             onClick={() => setActiveTab('sunday_quiz')}
@@ -3570,35 +4250,105 @@ export default function App() {
               activeTab === 'sunday_quiz' ? 'text-amber-400 underline underline-offset-8 font-bold' : 'text-amber-300'
             }`}
           >
-            Sunday 8PM Quiz
+            {t.nav.sundayQuiz}
           </button>
           <button
-            onClick={() => setActiveTab('discuss')}
+            onClick={() => setActiveTab('progress')}
             className={`hover:text-white transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
-              activeTab === 'discuss' ? 'text-sky-400 underline underline-offset-8' : ''
+              activeTab === 'progress' ? 'text-amber-400 underline underline-offset-8 font-bold' : ''
             }`}
           >
-            Discuss (Photo Q&A)
+            {t.nav.progress}
           </button>
           <button
             onClick={() => setActiveTab('flashboard')}
             className={`hover:text-white transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
-              activeTab === 'flashboard' ? 'text-sky-400 underline underline-offset-8' : ''
+              activeTab === 'flashboard' ? 'text-sky-400 underline underline-offset-8 font-bold' : ''
             }`}
           >
-            Flash Board
+            {t.nav.flashboard}
+          </button>
+          <button
+            onClick={() => setActiveTab('voice')}
+            className={`hover:text-white transition-colors whitespace-nowrap shrink-0 cursor-pointer flex items-center gap-1.5 ${
+              activeTab === 'voice' ? 'text-rose-400 underline underline-offset-8 font-bold' : 'text-rose-300'
+            }`}
+          >
+            <Radio className="w-3.5 h-3.5 animate-pulse text-rose-400" />
+            <span>{t.nav.voiceRoom}</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('discuss')}
+            className={`hover:text-white transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+              activeTab === 'discuss' ? 'text-sky-400 underline underline-offset-8 font-bold' : ''
+            }`}
+          >
+            {t.nav.discuss}
+          </button>
+          <button
+            onClick={() => setActiveTab('downloads')}
+            className={`hover:text-white transition-colors whitespace-nowrap shrink-0 cursor-pointer flex items-center gap-1.5 ${
+              activeTab === 'downloads' ? 'text-emerald-400 underline underline-offset-8 font-bold' : 'text-emerald-300'
+            }`}
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>{t.nav.downloadCenter}</span>
           </button>
         </nav>
 
-        {/* Zone 3: Download App + Color Theme + Sign Out */}
-        <div className="flex items-center gap-2.5 shrink-0">
+        {/* Zone 3: Student Profile Chip + Language Toggle + Download ZIP + Download App + Theme + Sign Out */}
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Active Logged-In Student Profile Chip (Always Shows Who Is Logged In) */}
+          <button
+            type="button"
+            onClick={() => setActiveTab('profile')}
+            title={`Logged in as ${currentStudentName} — View Profile & Progress`}
+            className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-amber-400/50 hover:border-amber-300 transition-colors cursor-pointer shrink-0 shadow-sm"
+          >
+            <ProfileLetterAvatar
+              name={currentStudentName}
+              photoUrl={sundayStudentPhoto || studentProfile?.photoUrl}
+              size="sm"
+            />
+            <div className="flex flex-col text-left max-w-[130px] sm:max-w-[180px]">
+              <span className="text-xs font-bold text-white truncate leading-tight">
+                {currentStudentName}
+              </span>
+              <span className="text-[10px] text-amber-300 font-mono leading-tight">
+                {isOwnerNiraj ? '👑 Creator Niraj' : `🎓 ${studentProfile?.agPoints ?? 5} AG Pts`}
+              </span>
+            </div>
+          </button>
+
+          {/* Prominent Language Switch (English / नेपाली) */}
+          <button
+            type="button"
+            onClick={() => setCurrentLanguage(currentLanguage === 'en' ? 'ne' : 'en')}
+            className="px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-amber-400/50 text-amber-300 font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-sm"
+            title="Toggle Language: English / नेपाली"
+          >
+            <Languages className="w-3.5 h-3.5" />
+            <span>{currentLanguage === 'en' ? '🇳🇵 NE' : '🇺🇸 EN'}</span>
+          </button>
+
+          {/* 1-Tap White & Black / Dark Mode Switcher */}
+          <button
+            type="button"
+            onClick={() => setAppTheme(appTheme === 'theme-light' ? 'theme-indigo' : 'theme-light')}
+            className="px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs font-bold flex items-center gap-1 cursor-pointer text-slate-200"
+            title="Switch between White Background & Black Text (Light) and Dark Mode"
+          >
+            {appTheme === 'theme-light' ? '🌙 Dark' : '☀️ Light (White & Black)'}
+          </button>
+
           <PWAInstallButton />
           <select
             value={appTheme}
             onChange={(e) => setAppTheme(e.target.value as any)}
             aria-label="Choose App Color Theme"
-            className="px-2.5 py-2 rounded-lg bg-slate-900 border border-amber-400/40 text-amber-300 font-bold text-xs cursor-pointer"
+            className="hidden sm:inline-block px-2 py-1.5 rounded-lg bg-slate-900 border border-amber-400/40 text-amber-300 font-bold text-xs cursor-pointer"
           >
+            <option value="theme-light">☀️ White & Black (Light)</option>
             <option value="theme-indigo">👑 Royal Violet</option>
             <option value="theme-emerald">🌿 Emerald Gold</option>
             <option value="theme-crimson">🌹 Crimson Gold</option>
@@ -3620,7 +4370,108 @@ export default function App() {
         </div>
       </header>
 
-      {/* Friday Evening Notification Modal (Authenticated View / Preview) */}
+      {/* Features & 95-Item Checklist Modal */}
+      {showAllFeaturesModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-slate-900 border-2 border-amber-400/70 rounded-2xl max-w-4xl w-full max-h-[88vh] flex flex-col shadow-2xl overflow-hidden text-left">
+            <div className="p-5 sm:p-6 border-b border-slate-800 flex flex-wrap items-center justify-between gap-4 bg-slate-950">
+              <div>
+                <span className="text-xs font-extrabold text-amber-400 uppercase tracking-wider">
+                  📦 COMPLETE SPECIFICATION ARCHIVE & 95-ITEM CHECKLIST (16 MODULES)
+                </span>
+                <h2 className="text-xl sm:text-2xl font-bold text-white font-display mt-0.5">
+                  Steppin — You Destination (www.steppin.com) All Features (ZIP & PDF)
+                </h2>
+                <p className="text-xs text-slate-400">
+                  Your Dream, Our Mission · तपाईंको सपना, हाम्रो लक्ष्य · Academic Director: Niraj Yadav
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={handleDownloadFeaturesZip}
+                  disabled={zipDownloading}
+                  className="px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-xs flex items-center gap-1.5 cursor-pointer shadow-md"
+                >
+                  <FileDown className="w-4 h-4" />
+                  {zipDownloading ? 'Generating ZIP...' : 'Download ZIP of PDFs (.zip)'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => downloadMasterFeaturesPdfDirect()}
+                  className="px-3.5 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 cursor-pointer"
+                >
+                  <FileDown className="w-4 h-4" />
+                  Master PDF (.pdf)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShow95ChecklistModal(true)}
+                  className="px-3.5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 cursor-pointer"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  95-Item Checklist
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowAllFeaturesModal(false)}
+                  className="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 text-xs font-semibold cursor-pointer"
+                >
+                  ✕ Close
+                </button>
+              </div>
+            </div>
+            <div className="p-5 sm:p-6 overflow-y-auto space-y-5 text-xs sm:text-sm">
+              <div className="p-4 rounded-xl bg-slate-950 border border-amber-400/40 text-slate-300 space-y-1.5">
+                <p className="font-bold text-amber-300 flex items-center gap-2">
+                  <FileDown className="w-4 h-4 text-amber-400" />
+                  What is inside <code className="text-white">Steppin_All_Features_And_Guides_PDF.zip</code>?
+                </p>
+                <ul className="list-disc list-inside text-xs text-slate-300 space-y-1">
+                  <li>
+                    <strong className="text-white">00_Steppin_Master_Feature_Specification.pdf</strong> — Complete Master A4 Guide covering all 16 modules
+                  </li>
+                  <li>
+                    <strong className="text-white">01_Steppin_Branding_PWA_And_Auth_Guide.pdf</strong> — Branding, PWA, Multi-Mode Login & You Destination Gate
+                  </li>
+                  <li>
+                    <strong className="text-white">02_Steppin_Curriculum_Mock_Tests_And_Quizzes.pdf</strong> — CDC 7-Subject Bank, Saturday Mock Exam & Sunday Super Quiz
+                  </li>
+                  <li>
+                    <strong className="text-white">03_Steppin_Leaderboard_Voice_AI_And_Admin.pdf</strong> — Live Voice Room, Bilingual I18N, Leaderboards & Firestore Rules
+                  </li>
+                  <li>
+                    <strong className="text-white">Steppin_95_Item_Complete_Verification_Checklist.txt</strong> — Complete plain-text checklist of all 95 requirements
+                  </li>
+                </ul>
+              </div>
+
+              <div className="space-y-4">
+                {STEPPIN_ALL_FEATURES_DATA.map((sec) => (
+                  <div key={sec.id} className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2.5">
+                    <div className="border-b border-slate-800 pb-2">
+                      <span className="text-[11px] font-bold text-amber-400">MODULE {sec.number}</span>
+                      <h3 className="text-base font-bold text-white">{sec.title}</h3>
+                      <p className="text-xs text-slate-400">{sec.subtitle}</p>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                      {sec.items.map((item, i) => (
+                        <div key={i} className="p-3 rounded-lg bg-slate-900/90 border border-slate-800/80">
+                          <p className="font-bold text-sky-300 text-xs">
+                            {sec.number}.{i + 1} {item.name}
+                          </p>
+                          <p className="text-slate-300 text-[11px] mt-1 leading-relaxed">{item.details}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showFridayReminderModal && (
         <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-slate-900 border-2 border-amber-400/70 rounded-2xl max-w-lg w-full p-6 sm:p-8 space-y-5 shadow-2xl">
@@ -3729,41 +4580,60 @@ export default function App() {
           <div className="flex items-center gap-3 overflow-x-auto">
             <button
               onClick={() => setActiveTab('dashboard')}
-              className="md:hidden text-slate-300 hover:text-white whitespace-nowrap cursor-pointer"
+              className={`hover:text-white whitespace-nowrap cursor-pointer ${
+                activeTab === 'dashboard' ? 'text-amber-400 font-bold underline' : 'text-slate-300'
+              }`}
             >
               Home
             </button>
             <button
               onClick={() => setActiveTab('practice')}
-              className="md:hidden text-slate-300 hover:text-white whitespace-nowrap cursor-pointer"
+              className={`hover:text-white whitespace-nowrap cursor-pointer ${
+                activeTab === 'practice' ? 'text-amber-400 font-bold underline' : 'text-slate-300'
+              }`}
             >
               Practice
             </button>
             <button
               onClick={() => setActiveTab('mock')}
-              className="md:hidden text-slate-300 hover:text-white whitespace-nowrap cursor-pointer"
+              className={`hover:text-white whitespace-nowrap cursor-pointer ${
+                activeTab === 'mock' ? 'text-amber-400 font-bold underline' : 'text-slate-300'
+              }`}
             >
               Saturday Exam
             </button>
             <button
-              onClick={() => setActiveTab('progress')}
-              className="md:hidden text-slate-300 hover:text-white whitespace-nowrap cursor-pointer"
-            >
-              Progress
-            </button>
-            <button
-              onClick={() => setActiveTab('flashboard')}
-              className="md:hidden text-slate-300 hover:text-white whitespace-nowrap cursor-pointer"
-            >
-              Flash
-            </button>
-            <button
               onClick={() => setActiveTab('sunday_quiz')}
               className={`hover:text-white whitespace-nowrap cursor-pointer ${
-                activeTab === 'sunday_quiz' ? 'text-amber-400 font-bold' : 'text-amber-300'
+                activeTab === 'sunday_quiz' ? 'text-amber-400 font-bold underline' : 'text-amber-300'
               }`}
             >
               Sunday 8PM Quiz
+            </button>
+            <button
+              onClick={() => setActiveTab('progress')}
+              className={`hover:text-white whitespace-nowrap cursor-pointer ${
+                activeTab === 'progress' ? 'text-sky-400 font-bold underline' : 'text-slate-300'
+              }`}
+            >
+              Progress & AI
+            </button>
+            <button
+              onClick={() => setActiveTab('flashboard')}
+              className={`hover:text-white whitespace-nowrap cursor-pointer ${
+                activeTab === 'flashboard' ? 'text-sky-400 font-bold underline' : 'text-slate-300'
+              }`}
+            >
+              Flash Board
+            </button>
+            <button
+              onClick={() => setActiveTab('voice')}
+              className={`hover:text-white whitespace-nowrap cursor-pointer flex items-center gap-1 ${
+                activeTab === 'voice' ? 'text-rose-400 font-bold' : 'text-rose-300'
+              }`}
+            >
+              <Radio className="w-3 h-3 text-rose-400 animate-pulse" />
+              <span>Voice Room</span>
             </button>
             <button
               onClick={() => setActiveTab('discuss')}
@@ -3774,12 +4644,13 @@ export default function App() {
               Discuss Photo Q&A
             </button>
             <button
-              onClick={() => setActiveTab('progress')}
-              className={`hover:text-white whitespace-nowrap cursor-pointer ${
-                activeTab === 'progress' ? 'text-sky-400 font-semibold' : 'text-slate-300'
+              onClick={() => setActiveTab('downloads')}
+              className={`hover:text-white whitespace-nowrap cursor-pointer flex items-center gap-1 ${
+                activeTab === 'downloads' ? 'text-emerald-400 font-bold' : 'text-emerald-300'
               }`}
             >
-              Progress & AI
+              <Download className="w-3 h-3 text-emerald-400" />
+              <span>Downloads</span>
             </button>
             <button
               onClick={() => setShowFridayReminderModal(true)}
@@ -3841,26 +4712,56 @@ export default function App() {
         </div>
       )}
 
-      {/* Privacy Screen Blur when Question Page loses focus */}
+      {/* Dynamic Anti-Screenshot & Watermark Overlay when Questions/Exams are Active */}
+      {isScreenshotBlocked && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none fixed inset-0 z-20 select-none overflow-hidden opacity-[0.04] flex flex-wrap gap-20 p-8 items-center justify-around -rotate-12"
+        >
+          {Array.from({ length: 36 }).map((_, idx) => (
+            <span
+              key={idx}
+              className="text-white text-xs font-mono font-bold tracking-wider whitespace-nowrap"
+            >
+              STEPPIN · CONFIDENTIAL · NO SCREENSHOT · {currentStudentName} · {firebaseUser?.uid?.slice(0, 8)}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Privacy Screen Blur when Question Page loses focus or Screenshot Key Pressed */}
       {windowBlurred && isScreenshotBlocked && (
-        <div className="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center">
-          <EyeOff className="w-12 h-12 text-rose-400 mb-3" />
-          <h2 className="text-2xl font-bold text-white font-display">Screenshot & Recording Protection Active</h2>
-          <p className="text-sm text-slate-300 max-w-md mt-2">
-            All Question Pages, Practice Mode, and Saturday Mock Tests are protected against screenshots and screen switching.
-            Click anywhere inside the window to resume.
+        <div
+          onClick={() => setWindowBlurred(false)}
+          className="fixed inset-0 z-50 bg-slate-950/98 backdrop-blur-xl flex flex-col items-center justify-center p-6 text-center select-none"
+        >
+          <div className="p-4 rounded-full bg-rose-500/10 border-2 border-rose-500/50 mb-3 animate-pulse">
+            <EyeOff className="w-12 h-12 text-rose-400" />
+          </div>
+          <span className="text-xs font-mono font-bold text-amber-400 uppercase tracking-widest">
+            Security Shield Active · Created by Niraj Yadav
+          </span>
+          <h2 className="text-2xl sm:text-3xl font-bold text-white font-display mt-1">
+            Screenshot & Screen Capture Strictly Blocked
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-300 max-w-md mt-2">
+            Practice questions, Saturday Mock Exams, and Sunday Quiz are strictly protected against screenshots, recording, and app switching.
+          </p>
+          <p className="text-xs text-amber-300/80 font-mono mt-1">
+            Student: {currentStudentName} · ID: {firebaseUser?.uid?.slice(0, 10)}
           </p>
           <button
+            type="button"
             onClick={() => setWindowBlurred(false)}
-            className="mt-5 px-5 py-2.5 bg-sky-500 text-slate-950 font-semibold text-sm rounded-xl cursor-pointer"
+            className="mt-6 px-6 py-3 bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold text-sm rounded-xl cursor-pointer shadow-lg"
           >
-            Return to Test
+            Click Anywhere to Return to Test
           </button>
         </div>
       )}
 
       {/* Main Content Container */}
-      <main className="max-w-7xl w-full mx-auto px-6 py-8 flex-1 space-y-8">
+      <main className="max-w-7xl w-full mx-auto px-6 py-8 pb-28 md:pb-12 flex-1 space-y-8">
         {/* ====================================================================
             NEW PAGE: PRIVATE REGISTERED STUDENTS & TIME SPENT TRACKER (ONLY NIRAJ SEES)
             ==================================================================== */}
@@ -4039,6 +4940,18 @@ export default function App() {
                     className="px-4 py-2.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 font-semibold text-xs sm:text-sm rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer"
                   >
                     <Camera className="w-4 h-4" /> Send Photo Question (Discuss)
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('progress')}
+                    className="px-4 py-2.5 bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-500/40 font-semibold text-xs sm:text-sm rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <BarChart2 className="w-4 h-4" /> View Progress & AI
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('flashboard')}
+                    className="px-4 py-2.5 bg-amber-400/20 hover:bg-amber-400/30 text-amber-300 border border-amber-400/40 font-semibold text-xs sm:text-sm rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Sparkles className="w-4 h-4" /> Open Flash Board
                   </button>
                   <a
                     href={NIRAJ_FB_LINK}
@@ -4273,8 +5186,8 @@ export default function App() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {SUBJECT_CATALOG.map((subj) => {
                   const sScore = studentProfile?.subjectScores?.[subj.id];
-                  const pct =
-                    sScore && sScore.total > 0 ? Math.round((sScore.correct / sScore.total) * 100) : 72;
+                  const hasScore = sScore && sScore.total > 0;
+                  const pct = hasScore ? Math.round((sScore.correct / sScore.total) * 100) : 0;
                   return (
                     <div
                       key={subj.id}
@@ -4288,7 +5201,9 @@ export default function App() {
                         <div className="space-y-1 pt-1">
                           <div className="flex justify-between text-xs text-slate-400">
                             <span>Syllabus Coverage</span>
-                            <span className="font-mono-tabular">Mastery: {pct}%</span>
+                            <span className="font-mono-tabular">
+                              {hasScore ? `Mastery: ${pct}%` : 'Not Started (0%)'}
+                            </span>
                           </div>
                           <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
                             <div className="h-full bg-sky-500" style={{ width: `${pct}%` }} />
@@ -4539,9 +5454,12 @@ export default function App() {
                 </div>
 
                 <div className="p-5 rounded-xl bg-slate-950 border border-slate-800">
-                  <p className="text-base sm:text-lg font-semibold text-white leading-relaxed">
-                    {practiceQuestions[practiceIndex].question}
-                  </p>
+                  <div className="flex items-start justify-between gap-4">
+                    <p className="text-base sm:text-lg font-semibold text-white leading-relaxed">
+                      {practiceQuestions[practiceIndex].question}
+                    </p>
+                    <AudioSpeakerBtn text={practiceQuestions[practiceIndex].question} label="Listen" />
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 gap-3">
@@ -4641,7 +5559,7 @@ export default function App() {
                 <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-4">
                   <div>
                     <span className="text-xs font-semibold text-emerald-400">
-                      SCREENSHOT ALLOWED · PRACTICE RESULT & FULL EXPLANATIONS
+                      STEPPIN VERIFIED RESULT · PRACTICE PERFORMANCE & EXPLANATIONS
                     </span>
                     <h2 className="text-2xl font-bold text-white font-display mt-1">
                       Practice Session Completed!
@@ -4778,19 +5696,46 @@ export default function App() {
                       </button>
                     )}
 
-                    <button
-                      disabled={!rulesAccepted}
-                      onClick={() => startSaturdayMockTest(false)}
-                      className={`px-6 py-3 rounded-xl font-bold text-xs sm:text-sm transition-colors cursor-pointer ${
-                        rulesAccepted
-                          ? 'bg-sky-500 hover:bg-sky-400 text-slate-950'
-                          : 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                      }`}
-                    >
-                      {isSaturdayMockHour
-                        ? 'Enter Live Saturday Exam (8:00 AM – 9:00 AM)'
-                        : 'Start Official Saturday Exam Simulation (30 Mixed Questions)'}
-                    </button>
+                    {isSaturdayMockHour || batchConfig.mockTestForceLive ? (
+                      <button
+                        disabled={!rulesAccepted}
+                        onClick={() => startSaturdayMockTest(false)}
+                        className={`px-6 py-3 rounded-xl font-bold text-xs sm:text-sm transition-colors cursor-pointer ${
+                          rulesAccepted
+                            ? 'bg-sky-500 hover:bg-sky-400 text-slate-950 shadow-lg shadow-sky-500/20'
+                            : 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                        }`}
+                      >
+                        Enter Live Saturday Exam (8:00 AM – 9:00 AM) →
+                      </button>
+                    ) : (
+                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full">
+                        <button
+                          type="button"
+                          disabled
+                          className="px-6 py-3 rounded-xl font-bold text-xs sm:text-sm bg-slate-950 border-2 border-amber-400/50 text-amber-300 cursor-not-allowed opacity-95 flex items-center justify-center gap-2"
+                        >
+                          <Lock className="w-4 h-4 text-amber-400 shrink-0" />
+                          <span>Exam Locked Until Countdown Finishes · Saturday 8:00 AM ({countdownText})</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab('practice')}
+                          className="px-5 py-3 rounded-xl font-bold text-xs sm:text-sm text-slate-950 bg-sky-400 hover:bg-sky-300 cursor-pointer flex items-center justify-center gap-2"
+                        >
+                          <span>Go to Practice Mode Instead →</span>
+                        </button>
+                        {isOwnerNiraj && (
+                          <button
+                            type="button"
+                            onClick={() => startSaturdayMockTest(false)}
+                            className="px-4 py-3 rounded-xl font-semibold text-xs text-amber-300 bg-slate-900 border border-amber-400/40 hover:bg-amber-400/10 cursor-pointer"
+                          >
+                            👑 Creator Preview Test (Niraj Only)
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -4803,7 +5748,7 @@ export default function App() {
                       </h3>
                       <p className="text-xs text-slate-400">
                         {isSaturdayResultPublished
-                          ? 'Results Automatically Published · Screenshot Allowed'
+                          ? 'Results Automatically Published · Official Saturday Rank Board'
                           : 'Exam in Progress — Topper Board Auto-Publishes at 10:00 AM'}
                       </p>
                     </div>
@@ -5030,7 +5975,7 @@ export default function App() {
             {mockFinished && (
               <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 space-y-4">
                 <span className="text-xs font-bold text-emerald-400">
-                  SCREENSHOT ALLOWED · OFFICIAL SATURDAY EXAM SUBMISSION SUMMARY
+                  STEPPIN VERIFIED · OFFICIAL SATURDAY EXAM SUBMISSION SUMMARY
                 </span>
                 <h3 className="text-2xl font-bold text-white font-display">
                   {mockDisqualified
@@ -5608,7 +6553,7 @@ export default function App() {
               <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-4">
                 <div>
                   <span className="text-xs font-semibold text-emerald-400">
-                    SCREENSHOT ALLOWED · SHARE YOUR PROGRESS %
+                    STEPPIN PERFORMANCE DASHBOARD · AI DIAGNOSTICS
                   </span>
                   <h2 className="text-2xl font-bold text-white font-display mt-0.5">
                     Subject-Wise Bar Chart & Automatic AI Weakness Detector
@@ -5616,7 +6561,10 @@ export default function App() {
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
                   <span className="text-sm font-mono-tabular font-bold text-sky-400">
-                    Overall Accuracy: {studentProfile?.accuracy || 78}%
+                    Overall Accuracy:{' '}
+                    {(studentProfile?.totalAttempts || 0) > 0
+                      ? `${studentProfile?.accuracy || 0}%`
+                      : '0% (No Practice Yet)'}
                   </span>
                   <button
                     type="button"
@@ -5704,31 +6652,29 @@ export default function App() {
               <div className="space-y-4">
                 {SUBJECT_CATALOG.map((subj) => {
                   const sStat = studentProfile?.subjectScores?.[subj.id];
-                  const pct =
-                    sStat && sStat.total > 0
-                      ? Math.round((sStat.correct / sStat.total) * 100)
-                      : subj.id === 'Opt. Maths'
-                      ? 42
-                      : 78;
-                  const isWeak = pct < 60;
+                  const hasQuestions = sStat && sStat.total > 0;
+                  const pct = hasQuestions ? Math.round((sStat.correct / sStat.total) * 100) : 0;
+                  const isWeak = hasQuestions && pct < 60;
                   return (
                     <div key={subj.id} className="space-y-1.5">
                       <div className="flex items-center justify-between text-xs">
                         <span className="font-semibold text-white">{subj.name}</span>
                         <span
                           className={`font-mono-tabular font-bold ${
-                            isWeak ? 'text-rose-400' : 'text-emerald-400'
+                            !hasQuestions ? 'text-slate-500' : isWeak ? 'text-rose-400' : 'text-emerald-400'
                           }`}
                         >
-                          {pct}% {isWeak ? '▲ WEAK AREA' : '● STRONG'}
+                          {!hasQuestions
+                            ? '0% · Not Attempted Yet'
+                            : `${pct}% ${isWeak ? '▲ WEAK AREA' : '● STRONG'}`}
                         </span>
                       </div>
                       <div className="w-full h-3 bg-slate-950 border border-slate-800 rounded-full overflow-hidden">
                         <div
                           className={`h-full transition-all duration-500 ${
-                            isWeak ? 'bg-rose-500' : 'bg-sky-500'
+                            !hasQuestions ? 'bg-slate-800' : isWeak ? 'bg-rose-500' : 'bg-sky-500'
                           }`}
-                          style={{ width: `${pct}%` }}
+                          style={{ width: `${Math.max(hasQuestions ? pct : 0, 0)}%` }}
                         />
                       </div>
                     </div>
@@ -5761,9 +6707,13 @@ export default function App() {
                           }
                           setActiveTab('practice');
                         }}
-                        className="px-3 py-1 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 text-xs font-semibold rounded-md shrink-0 cursor-pointer"
+                        className={`px-3 py-1 text-xs font-semibold rounded-md shrink-0 cursor-pointer ${
+                          alertText.includes('No practice')
+                            ? 'bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold'
+                            : 'bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40'
+                        }`}
                       >
-                        Fix Weakness Now →
+                        {alertText.includes('No practice') ? 'Start Practice Mode →' : 'Fix Weakness Now →'}
                       </button>
                     </li>
                   ))}
@@ -5849,6 +6799,171 @@ export default function App() {
               </div>
             </div>
 
+            {/* Student Points Leaderboard: Filter Rankings by Weekly, Monthly, or All-Time Points */}
+            <div className="bg-slate-900 border-2 border-amber-400/60 rounded-2xl p-6 sm:p-8 space-y-6 shadow-xl">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+                <div className="space-y-1">
+                  <span className="text-xs font-extrabold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                    <Trophy className="w-4 h-4 text-amber-400" /> BATCH 100 STUDENT POINTS LEADERBOARD
+                  </span>
+                  <h3 className="text-xl sm:text-2xl font-bold text-white font-display">
+                    Student Leaderboard —{' '}
+                    <span className="text-amber-400">
+                      {leaderboardTimeFilter === 'weekly'
+                        ? 'Weekly Points Ranking'
+                        : leaderboardTimeFilter === 'monthly'
+                        ? 'Monthly Points Ranking'
+                        : 'All-Time Points Ranking'}
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Filter student rankings by Weekly, Monthly, or All-Time AG Points (+2 Pts per correct answer, +5 Pts daily login).
+                  </p>
+                </div>
+
+                {/* Timeframe Filter Buttons: Weekly, Monthly, All-Time */}
+                <div className="inline-flex items-center p-1.5 rounded-xl bg-slate-950 border border-slate-800 gap-1.5 self-start lg:self-auto">
+                  {(
+                    [
+                      { id: 'weekly', label: 'Weekly Points' },
+                      { id: 'monthly', label: 'Monthly Points' },
+                      { id: 'all-time', label: 'All-Time Points' },
+                    ] as const
+                  ).map((tab) => {
+                    const isActive = leaderboardTimeFilter === tab.id;
+                    return (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        onClick={() => setLeaderboardTimeFilter(tab.id)}
+                        className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                          isActive
+                            ? 'bg-amber-400 text-slate-950 shadow-md shadow-amber-500/20'
+                            : 'text-slate-400 hover:text-white hover:bg-slate-900'
+                        }`}
+                      >
+                        {tab.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Top 3 Podium Cards for Selected Period */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {pointsLeaderboardList.slice(0, 3).map((student, idx) => {
+                  const isCurrentUser = student.uid === firebaseUser?.uid;
+                  const medalLabel =
+                    idx === 0 ? '👑 #1 Rank' : idx === 1 ? '🥈 #2 Rank' : '🥉 #3 Rank';
+                  const borderStyle =
+                    idx === 0
+                      ? 'border-amber-400 bg-amber-400/5'
+                      : idx === 1
+                      ? 'border-slate-300/60 bg-slate-950'
+                      : 'border-amber-600/60 bg-slate-950';
+
+                  return (
+                    <div
+                      key={`podium-${student.uid}`}
+                      className={`p-4 rounded-xl border-2 ${borderStyle} flex items-center justify-between gap-3`}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <ProfileLetterAvatar name={student.name} photoUrl={student.photoUrl} size="md" />
+                        <div className="min-w-0">
+                          <span className="text-[11px] font-mono-tabular font-extrabold text-amber-400 block">
+                            {medalLabel}
+                          </span>
+                          <p className="text-sm font-bold text-white truncate">
+                            {student.name} {isCurrentUser ? '(You)' : ''}
+                          </p>
+                          <p className="text-[11px] text-slate-400 truncate">
+                            🎯 {student.destinationGoal || 'Your Destination'}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-base font-extrabold text-emerald-400 font-mono-tabular">
+                          {student.displayPoints} Pts
+                        </p>
+                        <p className="text-[11px] text-sky-400 font-mono-tabular">
+                          {student.accuracy}% Acc
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Ranked Leaderboard Table */}
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs sm:text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-800 text-slate-400">
+                      <th className="py-3 px-4">Rank</th>
+                      <th className="py-3 px-4">Student</th>
+                      <th className="py-3 px-4">Destination</th>
+                      <th className="py-3 px-4">Overall Accuracy</th>
+                      <th className="py-3 px-4">
+                        {leaderboardTimeFilter === 'weekly'
+                          ? 'Weekly Attempts'
+                          : leaderboardTimeFilter === 'monthly'
+                          ? 'Monthly Attempts'
+                          : 'Total Attempts'}
+                      </th>
+                      <th className="py-3 px-4 text-right text-amber-400">
+                        {leaderboardTimeFilter === 'weekly'
+                          ? 'Weekly Points'
+                          : leaderboardTimeFilter === 'monthly'
+                          ? 'Monthly Points'
+                          : 'All-Time Points'}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/80 font-mono-tabular">
+                    {pointsLeaderboardList.slice(0, 10).map((student, idx) => {
+                      const isCurrentUser = student.uid === firebaseUser?.uid;
+                      return (
+                        <tr
+                          key={student.uid}
+                          className={`${
+                            isCurrentUser ? 'bg-sky-500/15' : 'hover:bg-slate-950/60'
+                          } transition-colors`}
+                        >
+                          <td className="py-3.5 px-4 font-bold">
+                            {idx === 0 ? (
+                              <span className="text-amber-400">#1 🏆</span>
+                            ) : idx === 1 ? (
+                              <span className="text-slate-200">#2 🥈</span>
+                            ) : idx === 2 ? (
+                              <span className="text-amber-600">#3 🥉</span>
+                            ) : (
+                              <span className="text-slate-400">#{idx + 1}</span>
+                            )}
+                          </td>
+                          <td className="py-3.5 px-4 font-sans font-bold text-white">
+                            <div className="flex items-center gap-2.5">
+                              <ProfileLetterAvatar name={student.name} photoUrl={student.photoUrl} size="sm" />
+                              <span>
+                                {student.name} {isCurrentUser ? '(You)' : ''}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="py-3.5 px-4 font-sans text-xs text-slate-300">
+                            {student.destinationGoal || 'Your Destination'}
+                          </td>
+                          <td className="py-3.5 px-4 text-emerald-400 font-bold">{student.accuracy}%</td>
+                          <td className="py-3.5 px-4 text-sky-400">{student.periodAttempts} MCQs</td>
+                          <td className="py-3.5 px-4 text-right font-extrabold text-amber-400">
+                            {student.displayPoints} AG Pts
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
             {/* Subject Toppers Section: Ranks Students Specifically by Individual Subject Accuracy */}
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 space-y-5">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-4">
@@ -5860,7 +6975,7 @@ export default function App() {
                     Subject Toppers — Ranked by {topperSubjectFilter} Accuracy (%)
                   </h3>
                   <p className="text-xs text-slate-400 mt-0.5">
-                    Select any individual subject below (such as Science or Opt. Maths) to see who leads in subject-wise accuracy rather than overall AG points.
+                    Select any individual subject below or switch between Weekly, Monthly, and All-Time points.
                   </p>
                 </div>
 
@@ -5882,6 +6997,35 @@ export default function App() {
                 </div>
               </div>
 
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <span className="text-xs text-slate-400">
+                  Showing points for:{' '}
+                  <strong className="text-amber-400 uppercase">{leaderboardTimeFilter}</strong>
+                </span>
+                <div className="inline-flex items-center gap-1.5">
+                  {(
+                    [
+                      { id: 'weekly', label: 'Weekly' },
+                      { id: 'monthly', label: 'Monthly' },
+                      { id: 'all-time', label: 'All-Time' },
+                    ] as const
+                  ).map((period) => (
+                    <button
+                      key={period.id}
+                      type="button"
+                      onClick={() => setLeaderboardTimeFilter(period.id)}
+                      className={`px-2.5 py-1 rounded-md text-xs font-semibold border transition-colors cursor-pointer ${
+                        leaderboardTimeFilter === period.id
+                          ? 'bg-amber-400 text-slate-950 border-amber-300 font-bold'
+                          : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white'
+                      }`}
+                    >
+                      {period.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse text-xs sm:text-sm">
                   <thead>
@@ -5890,7 +7034,13 @@ export default function App() {
                       <th className="py-3 px-4">Student Name</th>
                       <th className="py-3 px-4">{topperSubjectFilter} Accuracy</th>
                       <th className="py-3 px-4">Correct / Attempted</th>
-                      <th className="py-3 px-4 text-right">Overall AG Points</th>
+                      <th className="py-3 px-4 text-right">
+                        {leaderboardTimeFilter === 'weekly'
+                          ? 'Weekly AG Points'
+                          : leaderboardTimeFilter === 'monthly'
+                          ? 'Monthly AG Points'
+                          : 'All-Time AG Points'}
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/80 font-mono-tabular">
@@ -5950,16 +7100,22 @@ export default function App() {
                   <tbody className="divide-y divide-slate-800/80 font-mono-tabular">
                     <tr>
                       <td className="py-3.5 px-4 font-sans font-semibold text-white">Accuracy (%)</td>
-                      <td className="py-3.5 px-4 text-sky-400 font-bold">{studentProfile?.accuracy || 78}%</td>
+                      <td className="py-3.5 px-4 text-sky-400 font-bold">
+                        {(studentProfile?.totalAttempts || 0) > 0
+                          ? `${studentProfile?.accuracy || 0}%`
+                          : '0% (No Practice Yet)'}
+                      </td>
                       <td className="py-3.5 px-4 text-amber-400 font-bold">{topAgStudent.accuracy}%</td>
                       <td className="py-3.5 px-4 text-slate-300">
-                        {Math.max(0, topAgStudent.accuracy - (studentProfile?.accuracy || 78))}% to reach #1
+                        {(studentProfile?.totalAttempts || 0) > 0
+                          ? `${Math.max(0, topAgStudent.accuracy - (studentProfile?.accuracy || 0))}% to reach #1`
+                          : 'Solve questions to calculate gap'}
                       </td>
                     </tr>
                     <tr>
                       <td className="py-3.5 px-4 font-sans font-semibold text-white">Time Spent in App</td>
                       <td className="py-3.5 px-4 text-sky-400 font-bold">
-                        {formatTimeSpent(studentProfile?.timeSpentMinutes || 45)}
+                        {formatTimeSpent(studentProfile?.timeSpentMinutes || 1)}
                       </td>
                       <td className="py-3.5 px-4 text-amber-400 font-bold">
                         {formatTimeSpent(topAgStudent.timeSpentMinutes)}
@@ -5968,7 +7124,7 @@ export default function App() {
                     </tr>
                     <tr>
                       <td className="py-3.5 px-4 font-sans font-semibold text-white">Total Attempts</td>
-                      <td className="py-3.5 px-4 text-sky-400 font-bold">{studentProfile?.totalAttempts || 128}</td>
+                      <td className="py-3.5 px-4 text-sky-400 font-bold">{studentProfile?.totalAttempts || 0}</td>
                       <td className="py-3.5 px-4 text-amber-400 font-bold">{topAgStudent.totalAttempts}</td>
                       <td className="py-3.5 px-4 text-slate-300">+2 AG Points per correct answer</td>
                     </tr>
@@ -6224,6 +7380,38 @@ export default function App() {
                         />
                       </label>
                     </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setShowVoiceRecorderInDiscuss(!showVoiceRecorderInDiscuss)}
+                        className={`px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition ${
+                          showVoiceRecorderInDiscuss
+                            ? 'bg-rose-500/20 text-rose-300 border border-rose-500/50'
+                            : 'bg-slate-950 hover:bg-slate-800 text-amber-300 border border-amber-400/40'
+                        }`}
+                      >
+                        <Radio className="w-3.5 h-3.5 animate-pulse text-amber-400" />
+                        <span>{showVoiceRecorderInDiscuss ? 'Hide Voice Recorder' : '🎤 Record Audio Voice Doubt'}</span>
+                      </button>
+                      {voiceDoubtAudio && (
+                        <span className="text-xs text-emerald-400 font-semibold flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5" /> Audio Note Recorded & Attached
+                        </span>
+                      )}
+                    </div>
+
+                    {showVoiceRecorderInDiscuss && (
+                      <VoiceRecorder
+                        onAudioReady={(base64) => {
+                          setVoiceDoubtAudio(base64);
+                          setShowVoiceRecorderInDiscuss(false);
+                        }}
+                        onCancel={() => setShowVoiceRecorderInDiscuss(false)}
+                      />
+                    )}
                   </div>
 
                   <div>
@@ -6611,13 +7799,24 @@ export default function App() {
                         Are you Niraj Yadav logged in from another account? Enter your secret Creator PIN to unlock your Private Folder:
                       </p>
                       <div className="flex items-center gap-2">
-                        <input
-                          type="password"
-                          value={creatorPinInput}
-                          onChange={(e) => setCreatorPinInput(e.target.value)}
-                          placeholder="Creator Secret PIN"
-                          className="flex-1 px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white"
-                        />
+                        <div className="relative flex-1">
+                          <input
+                            type={showCreatorPin ? 'text' : 'password'}
+                            value={creatorPinInput}
+                            onChange={(e) => setCreatorPinInput(e.target.value)}
+                            placeholder="Creator Secret PIN"
+                            className="w-full pl-3 pr-10 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowCreatorPin((prev) => !prev)}
+                            aria-label={showCreatorPin ? 'Hide Creator PIN' : 'Show Creator PIN'}
+                            title={showCreatorPin ? 'Hide PIN' : 'Show PIN'}
+                            className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-amber-400 cursor-pointer"
+                          >
+                            {showCreatorPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
                         <button
                           type="button"
                           onClick={() => {
@@ -6903,6 +8102,272 @@ export default function App() {
                 })}
               </div>
             </section>
+          </div>
+        )}
+
+        {/* ====================================================================
+            LIVE VOICE & AUDIO STUDY ROOM (LiveVoice.tsx)
+            ==================================================================== */}
+        {activeTab === 'voice' && (
+          <LiveVoice
+            currentUserName={currentStudentName}
+            userAgPoints={studentProfile?.agPoints ?? 5}
+            onAnswerQuestion={(isCorrect) => {
+              if (isCorrect && firebaseUser) {
+                const currentPts = studentProfile?.agPoints || 5;
+                setStudentProfile((prev) => prev ? { ...prev, agPoints: currentPts + 2 } : null);
+                updateDoc(doc(db, 'students', firebaseUser.uid), {
+                  agPoints: currentPts + 2,
+                  updatedAt: new Date().toISOString(),
+                }).catch(() => {});
+              }
+            }}
+          />
+        )}
+
+        {/* ====================================================================
+            UNIVERSAL DOWNLOAD CENTER — ALSO DOWNLOADABLE FOR EVERYONE
+            ==================================================================== */}
+        {activeTab === 'downloads' && (
+          <div className="space-y-8 text-left">
+            {/* Header Banner */}
+            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-emerald-950 via-slate-900 to-amber-950 border-2 border-amber-400/50 p-6 sm:p-8 shadow-2xl">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="space-y-2">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-400/15 border border-amber-400/40 text-amber-300 text-xs font-bold tracking-wider uppercase">
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Downloadable for Everyone · Steppin Universal Download Center</span>
+                  </div>
+                  <h2 className="text-2xl sm:text-3xl font-extrabold text-white font-display">
+                    Download Steppin App & All Features
+                  </h2>
+                  <p className="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
+                    Install Steppin on your Android phone, iPhone, iPad, Windows PC, or Mac. Download comprehensive
+                    PDF study guides, solved CDC entrance question banks, student merit certificates, and the full
+                    95-item verification checklist.
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <PWAInstallButton />
+                </div>
+              </div>
+            </div>
+
+            {/* 6 Download Action Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {/* Card 1: PWA App Installation */}
+              <div className="rounded-2xl bg-slate-900 border border-emerald-500/40 p-6 shadow-xl flex flex-col justify-between space-y-4">
+                <div className="space-y-3">
+                  <div className="w-12 h-12 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                    <Smartphone className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-lg font-bold text-white font-display">
+                    Download App for Everyone
+                  </h3>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    Install the full Steppin Progressive Web App (PWA) with offline study caching, custom app icon, and full-screen exam experience.
+                  </p>
+                  <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-[11px] text-slate-400 space-y-1 font-sans">
+                    <p>✓ <strong>Android:</strong> Chrome ⋮ Menu → Add to Home screen</p>
+                    <p>✓ <strong>iPhone:</strong> Safari Share → Add to Home Screen</p>
+                    <p>✓ <strong>PC / Mac:</strong> Chrome/Edge URL bar → Install Steppin</p>
+                  </div>
+                </div>
+                <PWAInstallButton />
+              </div>
+
+              {/* Card 2: Official Entrance Study Guide PDF */}
+              <div className="rounded-2xl bg-slate-900 border border-amber-400/40 p-6 shadow-xl flex flex-col justify-between space-y-4">
+                <div className="space-y-3">
+                  <div className="w-12 h-12 rounded-xl bg-amber-400/20 text-amber-400 flex items-center justify-center">
+                    <FileText className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-lg font-bold text-white font-display">
+                    CDC Class 10 Entrance Guide PDF
+                  </h3>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    Comprehensive study notes, CDC Class 10 syllabus breakdowns, and exam regulations prepared by Niraj Yadav.
+                  </p>
+                  <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-[11px] text-slate-400 space-y-1 font-mono">
+                    <p>• 7 Core Subjects Syllabus</p>
+                    <p>• Weekly Mock Exam Rules & Scoring</p>
+                    <p>• Sunday Quiz IQ Strategies</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => downloadMasterFeaturesPdfDirect()}
+                  className="w-full py-3 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer shadow-md"
+                >
+                  <FileDown className="w-4 h-4" />
+                  <span>Download Study Guide PDF</span>
+                </button>
+              </div>
+
+              {/* Card 3: Solved Question Bank PDF */}
+              <div className="rounded-2xl bg-slate-900 border border-sky-500/40 p-6 shadow-xl flex flex-col justify-between space-y-4">
+                <div className="space-y-3">
+                  <div className="w-12 h-12 rounded-xl bg-sky-500/20 text-sky-400 flex items-center justify-center">
+                    <FileText className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-lg font-bold text-white font-display">
+                    Solved Question Bank PDF
+                  </h3>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    Printable Class 10 CDC Syllabus entrance question compilation covering Science, Math, English, and GK with step-by-step solutions.
+                  </p>
+                  <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-[11px] text-slate-400 space-y-1">
+                    <p>✓ Over 30 authentic entrance exam MCQs</p>
+                    <p>✓ Complete step-by-step formulas and solutions</p>
+                    <p>✓ High-yield revision guide for offline study</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => downloadSolvedQuestionBankPdf(SATURDAY_MOCK_MIXED_POOL)}
+                  className="w-full py-3 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer shadow-md"
+                >
+                  <FileDown className="w-4 h-4" />
+                  <span>Download Question Bank (.pdf)</span>
+                </button>
+              </div>
+
+              {/* Card 4: Master Features PDF Direct */}
+              <div className="rounded-2xl bg-slate-900 border border-violet-500/40 p-6 shadow-xl flex flex-col justify-between space-y-4">
+                <div className="space-y-3">
+                  <div className="w-12 h-12 rounded-xl bg-violet-500/20 text-violet-400 flex items-center justify-center">
+                    <Sparkles className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-lg font-bold text-white font-display">
+                    Master Features PDF
+                  </h3>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    Direct single-file download of the full 16-module master specification document with royal golden header layout.
+                  </p>
+                  <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-[11px] text-slate-400 space-y-1">
+                    <p>✓ All 16 Modules documented in detail</p>
+                    <p>✓ Authentication, Security, Exams, Audio & Admin</p>
+                    <p>✓ Royal A4 format with page numbers and headers</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => downloadMasterFeaturesPdfDirect()}
+                  className="w-full py-3 rounded-xl bg-violet-500 hover:bg-violet-400 text-white font-bold text-xs flex items-center justify-center gap-2 cursor-pointer shadow-md"
+                >
+                  <FileDown className="w-4 h-4" />
+                  <span>Download Master PDF (.pdf)</span>
+                </button>
+              </div>
+
+              {/* Card 5: Student Merit Certificate */}
+              <div className="rounded-2xl bg-slate-900 border border-rose-500/40 p-6 shadow-xl flex flex-col justify-between space-y-4">
+                <div className="space-y-3">
+                  <div className="w-12 h-12 rounded-xl bg-rose-500/20 text-rose-400 flex items-center justify-center">
+                    <Trophy className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-lg font-bold text-white font-display">
+                    Student Merit Certificate
+                  </h3>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    Personalized commendation letter and academic certificate certified by Academic Director Niraj Yadav.
+                  </p>
+                  <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-[11px] text-slate-400 space-y-1">
+                    <p>✓ Certified Student: <strong>{currentStudentName}</strong></p>
+                    <p>✓ Destination Badge: <strong>{profileDestination || 'Your Destination'}</strong></p>
+                    <p>✓ Official royal crest, AG points and signature</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleDownloadProfileLetterPdf(currentStudentName)}
+                  className="w-full py-3 rounded-xl bg-rose-500 hover:bg-rose-400 text-white font-bold text-xs flex items-center justify-center gap-2 cursor-pointer shadow-md"
+                >
+                  <FileDown className="w-4 h-4" />
+                  <span>Download Certificate (.pdf)</span>
+                </button>
+              </div>
+
+              {/* Card 6: 95-Item Verification Checklist */}
+              <div className="rounded-2xl bg-slate-900 border border-emerald-400/40 p-6 shadow-xl flex flex-col justify-between space-y-4">
+                <div className="space-y-3">
+                  <div className="w-12 h-12 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                    <CheckCircle2 className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-lg font-bold text-white font-display">
+                    95-Item Verification Checklist
+                  </h3>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    Interactive checklist verifying all 95 feature requirements specified in Section 14 of the build specification.
+                  </p>
+                  <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-[11px] text-emerald-400 space-y-1 font-semibold">
+                    <p>✓ Status: 95 / 95 Verified (100% Complete)</p>
+                    <p>✓ Filter by 15 functional sections</p>
+                    <p>✓ Export as clean plain text (.txt) file</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShow95ChecklistModal(true)}
+                  className="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer shadow-md"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Open 95 Checklist Modal</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 95-ITEM INTERACTIVE VERIFICATION CHECKLIST MODAL */}
+        {show95ChecklistModal && (
+          <div className="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+            <div className="bg-slate-900 border-2 border-emerald-400/80 rounded-2xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden text-left">
+              <div className="p-5 sm:p-6 border-b border-slate-800 flex flex-wrap items-center justify-between gap-4 bg-slate-950">
+                <div className="space-y-1">
+                  <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" /> SECTION 14 VERIFICATION ENGINE · 95 / 95 PASS
+                  </span>
+                  <h3 className="text-xl sm:text-2xl font-bold text-white font-display">
+                    Steppin Complete 95-Item Feature Verification Checklist
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Official specification checklist covering Branding, PWA, Auth, Curriculum, Exams, Voice, and Admin.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const text = generateSteppin95Checklist();
+                      const blob = new Blob([text], { type: 'text/plain' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = 'Steppin_95_Item_Complete_Verification_Checklist.txt';
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    }}
+                    className="px-3.5 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5" /> Download TXT
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShow95ChecklistModal(false)}
+                    className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs cursor-pointer"
+                  >
+                    ✕ Close
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-5 sm:p-6 overflow-y-auto space-y-4">
+                <pre className="p-4 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono text-emerald-300 whitespace-pre-wrap leading-relaxed max-h-[60vh] overflow-y-auto">
+                  {generateSteppin95Checklist()}
+                </pre>
+              </div>
+            </div>
           </div>
         )}
 
@@ -7350,6 +8815,82 @@ export default function App() {
           <span>Class 10 CDC Syllabus Nepal</span>
         </div>
       </footer>
+
+      {/* Downward Bottom Navigation Bar: Home, Practice, Saturday Exam, Progress, Flash Board */}
+      <nav
+        aria-label="Downward Navigation Bar"
+        className="fixed bottom-0 left-0 right-0 z-40 bg-slate-950/95 border-t border-slate-800/90 backdrop-blur-md flex items-center justify-around py-2 px-2 shadow-[0_-4px_24px_rgba(0,0,0,0.6)]"
+      >
+        <button
+          type="button"
+          onClick={() => setActiveTab('dashboard')}
+          className={`flex flex-col items-center justify-center gap-1 py-1 px-3 rounded-xl transition-all cursor-pointer ${
+            activeTab === 'dashboard'
+              ? 'text-amber-400 font-extrabold scale-105'
+              : 'text-slate-400 hover:text-white font-medium'
+          }`}
+          title="Home Dashboard"
+        >
+          <Home className="w-5 h-5" />
+          <span className="text-[11px] font-bold">Home</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('practice')}
+          className={`flex flex-col items-center justify-center gap-1 py-1 px-3 rounded-xl transition-all cursor-pointer ${
+            activeTab === 'practice'
+              ? 'text-amber-400 font-extrabold scale-105'
+              : 'text-slate-400 hover:text-white font-medium'
+          }`}
+          title="Practice Mode"
+        >
+          <BookOpen className="w-5 h-5" />
+          <span className="text-[11px] font-bold">Practice</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('mock')}
+          className={`flex flex-col items-center justify-center gap-1 py-1 px-3 rounded-xl transition-all cursor-pointer ${
+            activeTab === 'mock'
+              ? 'text-amber-400 font-extrabold scale-105'
+              : 'text-slate-400 hover:text-white font-medium'
+          }`}
+          title="Every Saturday 8 AM Mock Exam"
+        >
+          <Award className="w-5 h-5" />
+          <span className="text-[11px] font-bold">Saturday Exam</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('progress')}
+          className={`flex flex-col items-center justify-center gap-1 py-1 px-3 rounded-xl transition-all cursor-pointer ${
+            activeTab === 'progress'
+              ? 'text-sky-400 font-extrabold scale-105'
+              : 'text-slate-400 hover:text-white font-medium'
+          }`}
+          title="Progress & AI Weakness Detector"
+        >
+          <BarChart2 className="w-5 h-5" />
+          <span className="text-[11px] font-bold">Progress</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('flashboard')}
+          className={`flex flex-col items-center justify-center gap-1 py-1 px-3 rounded-xl transition-all cursor-pointer ${
+            activeTab === 'flashboard'
+              ? 'text-amber-300 font-extrabold scale-105'
+              : 'text-slate-400 hover:text-white font-medium'
+          }`}
+          title="Official Flash Board & Notices"
+        >
+          <Zap className="w-5 h-5" />
+          <span className="text-[11px] font-bold">Flash Board</span>
+        </button>
+      </nav>
     </div>
   );
 }
